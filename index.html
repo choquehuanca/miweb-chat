@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat como WhatsApp</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -70,7 +71,7 @@
         .input-container button:hover {
             background-color: #128c7e;
         }
-    </style>
+    </script>
 </head>
 <body>
     <div class="header">
@@ -86,27 +87,20 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'chatMessages';
+        const socket = io();
 
-        function getSavedMessages() {
-            try {
-                const data = localStorage.getItem(STORAGE_KEY);
-                return data ? JSON.parse(data) : [];
-            } catch (err) {
-                console.error('Error al leer mensajes guardados:', err);
-                return [];
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const usernameInput = document.getElementById('usernameInput');
+            const message = input.value.trim();
+            const username = usernameInput.value.trim() || 'Anónimo';
+            if (message) {
+                socket.emit('chat message', { username, message });
+                input.value = '';
             }
         }
 
-        function saveMessages(messages) {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-            } catch (err) {
-                console.error('Error al guardar mensajes:', err);
-            }
-        }
-
-        function renderMessage(data) {
+        socket.on('chat message', (data) => {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message received';
@@ -117,35 +111,28 @@
             messageDiv.appendChild(document.createTextNode(data.message));
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+        });
 
-        function loadMessages() {
-            getSavedMessages().forEach(renderMessage);
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const usernameInput = document.getElementById('usernameInput');
-            const message = input.value.trim();
-            const username = usernameInput.value.trim() || 'Anónimo';
-            if (!message) return;
-
-            const newMessage = { username, message };
-            renderMessage(newMessage);
-            const messages = getSavedMessages();
-            messages.push(newMessage);
-            saveMessages(messages);
-            input.value = '';
-            input.focus();
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            loadMessages();
-            document.getElementById('messageInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
+        socket.on('load messages', (loadedMessages) => {
+            const chatContainer = document.getElementById('chatContainer');
+            loadedMessages.forEach(data => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message received';
+                const usernameDiv = document.createElement('div');
+                usernameDiv.className = 'username';
+                usernameDiv.textContent = data.username;
+                messageDiv.appendChild(usernameDiv);
+                messageDiv.appendChild(document.createTextNode(data.message));
+                chatContainer.appendChild(messageDiv);
             });
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        });
+
+        // Permitir enviar con Enter
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
         });
     </script>
 </body>
