@@ -88,19 +88,27 @@
 
     <script>
         const socket = io();
+        const STORAGE_KEY = 'chatMessages';
 
-        function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const usernameInput = document.getElementById('usernameInput');
-            const message = input.value.trim();
-            const username = usernameInput.value.trim() || 'Anónimo';
-            if (message) {
-                socket.emit('chat message', { username, message });
-                input.value = '';
+        function getSavedMessages() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (err) {
+                console.error('Error al leer mensajes guardados:', err);
+                return [];
             }
         }
 
-        socket.on('chat message', (data) => {
+        function saveMessages(messages) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+            } catch (err) {
+                console.error('Error al guardar mensajes:', err);
+            }
+        }
+
+        function renderMessage(data) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message received';
@@ -111,21 +119,39 @@
             messageDiv.appendChild(document.createTextNode(data.message));
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const usernameInput = document.getElementById('usernameInput');
+            const message = input.value.trim();
+            const username = usernameInput.value.trim() || 'Anónimo';
+            if (message) {
+                const newMessage = { username, message };
+                socket.emit('chat message', newMessage);
+                renderMessage(newMessage);
+                const messages = getSavedMessages();
+                messages.push(newMessage);
+                saveMessages(messages);
+                input.value = '';
+            }
+        }
+
+        socket.on('chat message', (data) => {
+            renderMessage(data);
+            const messages = getSavedMessages();
+            messages.push(data);
+            saveMessages(messages);
         });
 
         socket.on('load messages', (loadedMessages) => {
             const chatContainer = document.getElementById('chatContainer');
-            loadedMessages.forEach(data => {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'message received';
-                const usernameDiv = document.createElement('div');
-                usernameDiv.className = 'username';
-                usernameDiv.textContent = data.username;
-                messageDiv.appendChild(usernameDiv);
-                messageDiv.appendChild(document.createTextNode(data.message));
-                chatContainer.appendChild(messageDiv);
-            });
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            chatContainer.innerHTML = '';
+            loadedMessages.forEach(renderMessage);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            getSavedMessages().forEach(renderMessage);
         });
 
         // Permitir enviar con Enter
