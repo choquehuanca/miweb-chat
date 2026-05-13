@@ -10,10 +10,62 @@
             background-color: #e5ddd5;
             margin: 0;
             padding: 0;
+            overflow: hidden;
+        }
+        #main-wrapper {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        /* Área del Juego */
+        #game-area {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f2f5;
+            transition: margin-right 0.3s ease;
         }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            gap: 10px;
+            background-color: #075e54;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .cell:hover { background-color: #f9f9f9; }
+        
+        /* Chat Lateral */
+        #chat-sidebar {
+            width: 350px;
+            height: 100%;
+            background-color: #fff;
+            position: absolute;
+            right: -350px;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+            transition: right 0.3s ease;
+            z-index: 100;
+        }
+        #chat-sidebar.open { right: 0; }
+
         .header {
             background-color: #075e54;
             color: white;
@@ -70,33 +122,60 @@
         .input-container button:hover {
             background-color: #128c7e;
         }
+        
+        /* Botón para deslizar chat */
+        #chat-toggle {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            z-index: 101;
+            padding: 10px 20px;
+            background: #25d366;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Chat Global</h1>
-        <div id="status" style="font-size: 12px; color: #ffd700;">Conectando...</div>
-        <input type="text" id="usernameInput" placeholder="Tu nombre..." style="padding: 5px; border-radius: 5px; border: none; margin-top: 5px;">
-    </div>
-    <div class="chat-container" id="chatContainer">
-        <div id="no-messages" style="text-align: center; color: #777; margin-top: 20px;">Esperando mensajes...</div>
-    </div>
-    <div class="input-container">
-        <input type="text" id="messageInput" placeholder="Escribe un mensaje...">
-        <button onclick="sendMessage()">Enviar</button>
+    <button id="chat-toggle" onclick="toggleChat()">💬 Abrir Chat</button>
+    
+    <div id="main-wrapper">
+        <div id="game-area">
+            <h2>Tres en Raya Online</h2>
+            <div id="game-info" style="margin-bottom: 20px;">Esperando jugadores...</div>
+            <div class="board" id="board">
+                <div class="cell" onclick="makeMove(0)"></div>
+                <div class="cell" onclick="makeMove(1)"></div>
+                <div class="cell" onclick="makeMove(2)"></div>
+                <div class="cell" onclick="makeMove(3)"></div>
+                <div class="cell" onclick="makeMove(4)"></div>
+                <div class="cell" onclick="makeMove(5)"></div>
+                <div class="cell" onclick="makeMove(6)"></div>
+                <div class="cell" onclick="makeMove(7)"></div>
+                <div class="cell" onclick="makeMove(8)"></div>
+            </div>
+            <button onclick="joinGame()" id="btnJoin" style="margin-top:20px; padding:10px;">Jugar ahora</button>
+        </div>
+
+        <div id="chat-sidebar">
+            <div class="header">
+                <h3>Chat Global</h3>
+                <div id="status" style="font-size: 11px; color: #ffd700;">Conectando...</div>
+                <input type="text" id="usernameInput" placeholder="Tu nombre..." style="width: 80%; padding: 5px; border-radius: 5px; border: none;">
+            </div>
+            <div class="chat-container" id="chatContainer"></div>
+            <div class="input-container">
+                <input type="text" id="messageInput" placeholder="Mensaje...">
+                <button onclick="sendMessage()">Enviar</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Movido al final para evitar bloqueo de carga -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // 1. Verificación de seguridad: ¿Se abrió como archivo local?
-        if (window.location.protocol === 'file:') {
-            alert('¡Error! Has abierto el HTML como un archivo local. El chat solo funciona si entras por la URL de Railway o http://localhost:3000');
-        }
-
-        // 2. Intentar inicializar Socket.io
         const socket = typeof io !== 'undefined' ? io() : null;
-        const statusDiv = document.getElementById('status');
         const chatContainer = document.getElementById('chatContainer');
 
         if (!socket) {
@@ -114,6 +193,41 @@
             });
         }
 
+        // Lógica de Interfaz
+        function toggleChat() {
+            const sidebar = document.getElementById('chat-sidebar');
+            sidebar.classList.toggle('open');
+            document.getElementById('chat-toggle').textContent = sidebar.classList.contains('open') ? '❌ Cerrar Chat' : '💬 Abrir Chat';
+        }
+
+        // Lógica del Juego
+        let mySymbol = null;
+        function joinGame() {
+            const name = document.getElementById('usernameInput').value || 'Anónimo';
+            socket.emit('join game', name);
+            document.getElementById('btnJoin').style.display = 'none';
+        }
+
+        function makeMove(idx) {
+            if (mySymbol) socket.emit('make move', idx);
+        }
+
+        socket.on('player assigned', (symbol) => { mySymbol = symbol; });
+
+        socket.on('game update', (data) => {
+            const cells = document.querySelectorAll('.cell');
+            data.board.forEach((val, i) => { cells[i].textContent = val; });
+            
+            const info = document.getElementById('game-info');
+            if (data.players.length < 2) {
+                info.textContent = "Esperando al segundo jugador...";
+            } else {
+                const turnName = data.xIsNext ? 'X' : 'O';
+                info.textContent = `Turno de: ${turnName} ${mySymbol === turnName ? '(Tú)' : ''}`;
+            }
+        });
+
+        // Lógica de Chat
         function renderMessage(data) {
             const noMessages = document.getElementById('no-messages');
             if (noMessages) noMessages.remove();
