@@ -9,11 +9,19 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 const messagesFile = path.join(__dirname, 'messages.json');
+const statsFile = path.join(__dirname, 'stats.json');
 
 // Estado del juego
 let players = [];
+let onlineUsers = {}; // socket.id -> userData
+let activeGameType = 'tictactoe';
 let board = Array(9).fill(null);
 let xIsNext = true;
+let gameActive = true;
+let winnerInfo = null;
+
+// Estado Minigolf
+let golfState = { ballX: 50, ballY: 250, holeX: 450, holeY: 250, strokes: { X: 0, O: 0 } };
 
 // Cargar mensajes del archivo
 let messages = [];
@@ -24,6 +32,29 @@ if (fs.existsSync(messagesFile)) {
     console.error('Error al cargar mensajes:', err);
   }
 }
+
+// Cargar estadísticas
+let stats = {};
+if (fs.existsSync(statsFile)) {
+  try {
+    stats = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
+  } catch (err) { console.error('Error al cargar estadísticas:', err); }
+}
+
+const checkWinner = (b) => {
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for (let i = 0; i < lines.length; i++) {
+    const [a, b1, c] = lines[i];
+    if (b[a] && b[a] === b[b1] && b[a] === b[c]) return { winner: b[a], line: [a, b1, c] };
+  }
+  return b.includes(null) ? null : { winner: 'Draw', line: [] };
+};
+
+const saveStats = async () => {
+  try {
+    await fs.promises.writeFile(statsFile, JSON.stringify(stats, null, 2));
+  } catch (err) { console.error('Error al guardar estadísticas:', err); }
+};
 
 app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz del proyecto
 
@@ -43,16 +74,48 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('Un usuario se conectó');
 
-  // Lógica del Juego
-  socket.on('join game', (username) => {
+  socket.on('join game', (userData) => {
+    onlineUsers[socket.id] = { username: userData.username, avatar: userData.avatar, id: socket.id };
+    io.emit('update user list', Object.values(onlineUsers));
+    
     if (players.length < 2) {
-      players.push({ id: socket.id, username, symbol: players.length === 0 ? 'X' : 'O' });
+      const symbol = players.length === 0 ? 'X' : 'O';
+      players.push({ id: socket.id, username: userData.username, avatar: userData.avatar, symbol });
       socket.emit('player assigned', players[players.length - 1].symbol);
     }
-    io.emit('game update', { board, xIsNext, players });
+    io.emit('game update', { board, xIsNext, players, winnerInfo, stats, activeGameType, golfState });
+  });
+
+  // Gestión de Invitaciones y Menú
+  socket.on('change game', (type) => {
+    activeGameType = type;
+    io.emit('game update', { board, xIsNext, players, winnerInfo, stats, activeGameType, golfState });
+  });
+
+  socket.on('invite player', ({ toId, gameType }) => {
+    io.to(toId).emit('receive invite', { from: onlineUsers[socket.id], gameType });
+  });
+
+  socket.on('accept invite', ({ hostId, gameType }) => {
+    activeGameType = gameType;
+    // Resetear jugadores para la nueva partida
+    players = [onlineUsers[hostId], onlineUsers[socket.id]].map((u, i) => ({ ...u, symbol: i === 0 ? 'X' : 'O' }));
+    io.to(hostId).emit('player assigned', 'X');
+    socket.emit('player assigned', 'O');
+    io.emit('game update', { board, xIsNext, players, winnerInfo, stats, activeGameType, golfState });
+  });
+
+  // Lógica Minigolf
+  socket.on('golf move', (data) => {
+    const player = players.find(p => p.id === socket.id);
+    if (!player) return;
+    golfState = { ...golfState, ...data };
+    golfState.strokes[player.symbol]++;
+    io.emit('game update', { board, xIsNext, players, winnerInfo, stats, activeGameType, golfState });
   });
 
   socket.on('make move', (index) => {
+    if (!gameActive) return;
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
     
@@ -61,19 +124,42 @@ io.on('connection', (socket) => {
     if (isPlayerTurn && !board[index]) {
       board[index] = player.symbol;
       xIsNext = !xIsNext;
-      io.emit('game update', { board, xIsNext, players });
+      
+      winnerInfo = checkWinner(board);
+      if (winnerInfo) {
+        gameActive = false;
+        if (winnerInfo.winner !== 'Draw') {
+          const winnerPlayer = players.find(p => p.symbol === winnerInfo.winner);
+          const loserPlayer = players.find(p => p.symbol !== winnerInfo.winner);
+          if (winnerPlayer) {
+            stats[winnerPlayer.username] = (stats[winnerPlayer.username] || 0) + 1;
+            saveStats();
+          }
+        }
+      }
+      io.emit('game update', { board, xIsNext, players, winnerInfo, stats });
     }
   });
 
   socket.on('reset game', () => {
     board = Array(9).fill(null);
+    golfState = { ballX: 50, ballY: 250, holeX: 450, holeY: 250, strokes: { X: 0, O: 0 } };
     xIsNext = true;
-    io.emit('game update', { board, xIsNext, players });
+    gameActive = true;
+    winnerInfo = null;
+    io.emit('game update', { board, xIsNext, players, winnerInfo, stats, activeGameType, golfState });
+  });
+
+  socket.on('send sticker', (emoji) => {
+    const player = players.find(p => p.id === socket.id);
+    socket.broadcast.emit('show sticker', { emoji, from: player?.username });
   });
 
   socket.on('disconnect', () => {
     console.log('Un usuario se desconectó');
+    delete onlineUsers[socket.id];
     players = players.filter(p => p.id !== socket.id);
+    io.emit('update user list', Object.values(onlineUsers));
     io.emit('game update', { board, xIsNext, players });
   });
 

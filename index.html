@@ -18,6 +18,17 @@
             height: 100vh;
             position: relative;
         }
+        /* Menú de Juegos */
+        #game-menu {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
         /* Área del Juego */
         #game-area {
             flex: 1;
@@ -36,6 +47,12 @@
             padding: 10px;
             border-radius: 10px;
         }
+        #golf-canvas {
+            background: #2ecc71;
+            border: 5px solid #27ae60;
+            border-radius: 15px;
+            cursor: crosshair;
+        }
         .cell {
             width: 100px;
             height: 100px;
@@ -49,7 +66,48 @@
             border-radius: 5px;
         }
         .cell:hover { background-color: #f9f9f9; }
+        .cell.winner {
+            background-color: #25d366 !important;
+            color: white;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
         
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(7, 94, 84, 0.95);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+        .avatar-select {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        .avatar-option {
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            transition: 0.3s;
+        }
+        .avatar-option.selected {
+            background: #25d366;
+            transform: scale(1.2);
+        }
+
         /* Chat Lateral */
         #chat-sidebar {
             width: 350px;
@@ -99,6 +157,41 @@
             background-color: white;
             align-self: flex-start;
         }
+        .message-content { display: flex; align-items: center; gap: 8px; }
+        .msg-avatar { font-size: 1.2rem; }
+        
+        /* Stickers Pop */
+        #sticker-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8rem;
+            pointer-events: none;
+            z-index: 300;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .online-list {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            font-size: 0.9rem;
+        }
+        .stats-box {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            background: #fff3cd;
+            padding: 5px;
+            border-radius: 5px;
+        }
         .input-container {
             display: flex;
             padding: 10px;
@@ -139,31 +232,70 @@
     </style>
 </head>
 <body>
+    <div id="login-overlay">
+        <div>
+            <h2>Bienvenido al Chat & Juegos</h2>
+            <input type="text" id="loginName" placeholder="Tu nombre..." style="padding:10px; border-radius:20px; border:none; width:200px;"><br>
+            <div class="avatar-select" id="avatarPicker">
+                <span class="avatar-option" onclick="selectAvatar(this, '🐱')">🐱</span>
+                <span class="avatar-option" onclick="selectAvatar(this, '🐶')">🐶</span>
+                <span class="avatar-option" onclick="selectAvatar(this, '🦊')">🦊</span>
+                <span class="avatar-option" onclick="selectAvatar(this, '🐸')">🐸</span>
+                <span class="avatar-option" onclick="selectAvatar(this, '🐰')">🐰</span>
+            </div>
+            <button onclick="doLogin()" style="padding:10px 30px; border-radius:20px; border:none; background:#25d366; color:white; cursor:pointer; font-weight:bold;">ENTRAR</button>
+        </div>
+    </div>
+
+    <div id="sticker-display"></div>
+
     <button id="chat-toggle" onclick="toggleChat()">💬 Abrir Chat</button>
     
     <div id="main-wrapper">
+        <div id="game-menu">
+            <button onclick="socket.emit('change game', 'tictactoe')">⭕ Tres en Raya</button>
+            <button onclick="socket.emit('change game', 'minigolf')">⛳ Minigolf</button>
+        </div>
+
         <div id="game-area">
-            <h2>Tres en Raya Online</h2>
+            <h2 id="game-title">Juego Online</h2>
             <div id="game-info" style="margin-bottom: 20px;">Esperando jugadores...</div>
-            <div class="board" id="board">
-                <div class="cell" onclick="makeMove(0)"></div>
-                <div class="cell" onclick="makeMove(1)"></div>
-                <div class="cell" onclick="makeMove(2)"></div>
-                <div class="cell" onclick="makeMove(3)"></div>
-                <div class="cell" onclick="makeMove(4)"></div>
-                <div class="cell" onclick="makeMove(5)"></div>
-                <div class="cell" onclick="makeMove(6)"></div>
-                <div class="cell" onclick="makeMove(7)"></div>
-                <div class="cell" onclick="makeMove(8)"></div>
+            
+            <div id="tictactoe-ui" class="board">
+                <div class="cell" data-index="0" onclick="makeMove(0)"></div>
+                <div class="cell" data-index="1" onclick="makeMove(1)"></div>
+                <div class="cell" data-index="2" onclick="makeMove(2)"></div>
+                <div class="cell" data-index="3" onclick="makeMove(3)"></div>
+                <div class="cell" data-index="4" onclick="makeMove(4)"></div>
+                <div class="cell" data-index="5" onclick="makeMove(5)"></div>
+                <div class="cell" data-index="6" onclick="makeMove(6)"></div>
+                <div class="cell" data-index="7" onclick="makeMove(7)"></div>
+                <div class="cell" data-index="8" onclick="makeMove(8)"></div>
             </div>
-            <button onclick="joinGame()" id="btnJoin" style="margin-top:20px; padding:10px;">Jugar ahora</button>
+
+            <div id="minigolf-ui" style="display:none; text-align: center;">
+                <canvas id="golf-canvas" width="500" height="400"></canvas>
+                <p>Haz clic para lanzar la bola hacia el agujero blanco.</p>
+            </div>
+
+            <div style="margin-top: 10px;">
+                <button onclick="sendSticker('😂')">😂</button>
+                <button onclick="sendSticker('🔥')">🔥</button>
+                <button onclick="sendSticker('💩')">💩</button>
+                <button onclick="sendSticker('🤡')">🤡</button>
+            </div>
+
+            <button onclick="socket.emit('reset game')" id="btnReset" style="display:none; margin-top:20px; padding:10px;">Reiniciar Juego</button>
+            <div id="stats-display" style="margin-top:20px;"></div>
         </div>
 
         <div id="chat-sidebar">
             <div class="header">
                 <h3>Chat Global</h3>
                 <div id="status" style="font-size: 11px; color: #ffd700;">Conectando...</div>
-                <input type="text" id="usernameInput" placeholder="Tu nombre..." style="width: 80%; padding: 5px; border-radius: 5px; border: none;">
+            </div>
+            <div class="online-list" id="onlineUsers">
+                <strong>Usuarios en línea:</strong>
             </div>
             <div class="chat-container" id="chatContainer"></div>
             <div class="input-container">
@@ -176,21 +308,47 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = typeof io !== 'undefined' ? io() : null;
+        let currentUser = { name: '', avatar: '🐱' };
+
+        function selectAvatar(el, icon) {
+            document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
+            el.classList.add('selected');
+            currentUser.avatar = icon;
+        }
+
+        function doLogin() {
+            const name = document.getElementById('loginName').value.trim();
+            if (!name) return alert("Escribe un nombre");
+            currentUser.name = name;
+            document.getElementById('login-overlay').style.display = 'none';
+            socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
+        }
+
         const chatContainer = document.getElementById('chatContainer');
+        const statusDiv = document.getElementById('status');
 
-        if (!socket) {
-            statusDiv.textContent = 'Error: No se pudo conectar con el servidor (Socket.io no cargado)';
-            statusDiv.style.color = '#ff5252';
-        } else {
-            socket.on('connect', () => {
-                statusDiv.textContent = 'Conectado';
-                statusDiv.style.color = '#25d366';
+        socket.on('update user list', (users) => {
+            const list = document.getElementById('onlineUsers');
+            list.innerHTML = '<strong>En línea:</strong>';
+            users.forEach(u => {
+                if(u.id === socket.id) return;
+                list.innerHTML += `<div class="user-item">
+                    <span>${u.avatar} ${u.username}</span>
+                    <button onclick="invite('${u.id}')">Invitar</button>
+                </div>`;
             });
+        });
 
-            socket.on('disconnect', () => {
-                statusDiv.textContent = 'Desconectado';
-                statusDiv.style.color = '#ff5252';
-            });
+        function invite(id) { socket.emit('invite player', { toId: id, gameType: 'minigolf' }); }
+        socket.on('receive invite', (data) => {
+            if(confirm(`${data.from.username} te invita a jugar ${data.gameType}. ¿Aceptas?`)) {
+                socket.emit('accept invite', { hostId: data.from.id, gameType: data.gameType });
+            }
+        });
+
+        if (socket) {
+            socket.on('connect', () => { statusDiv.textContent = 'Conectado'; statusDiv.style.color = '#25d366'; });
+            socket.on('disconnect', () => { statusDiv.textContent = 'Desconectado'; statusDiv.style.color = '#ff5252'; });
         }
 
         // Lógica de Interfaz
@@ -202,29 +360,81 @@
 
         // Lógica del Juego
         let mySymbol = null;
-        function joinGame() {
-            const name = document.getElementById('usernameInput').value || 'Anónimo';
-            socket.emit('join game', name);
-            document.getElementById('btnJoin').style.display = 'none';
-        }
-
-        function makeMove(idx) {
-            if (mySymbol) socket.emit('make move', idx);
-        }
-
+        function makeMove(idx) { if (mySymbol) socket.emit('make move', idx); }
         socket.on('player assigned', (symbol) => { mySymbol = symbol; });
 
+        // Minigolf Render
+        function drawGolf(state) {
+            const canvas = document.getElementById('golf-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,500,400);
+            // Agujero
+            ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(state.holeX, state.holeY, 15, 0, Math.PI*2); ctx.fill();
+            // Bola
+            ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(state.ballX, state.ballY, 10, 0, Math.PI*2); ctx.fill();
+        }
+
+        document.getElementById('golf-canvas').onclick = (e) => {
+            if(!mySymbol) return;
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            socket.emit('golf move', { ballX: x, ballY: y });
+        };
+
         socket.on('game update', (data) => {
+            document.getElementById('game-title').textContent = data.activeGameType === 'minigolf' ? 'Minigolf' : 'Tres en Raya';
+            document.getElementById('tictactoe-ui').style.display = data.activeGameType === 'tictactoe' ? 'grid' : 'none';
+            document.getElementById('minigolf-ui').style.display = data.activeGameType === 'minigolf' ? 'block' : 'none';
+            
+            if(data.activeGameType === 'minigolf') drawGolf(data.golfState);
+
             const cells = document.querySelectorAll('.cell');
-            data.board.forEach((val, i) => { cells[i].textContent = val; });
+            data.board.forEach((val, i) => { 
+                cells[i].textContent = val;
+                cells[i].classList.remove('winner');
+            });
+            
+            if (data.winnerInfo) {
+                data.winnerInfo.line.forEach(idx => cells[idx].classList.add('winner'));
+                document.getElementById('btnReset').style.display = 'block';
+            } else {
+                document.getElementById('btnReset').style.display = 'none';
+            }
+
+            // Actualizar estadísticas
+            const statsDiv = document.getElementById('stats-display');
+            statsDiv.innerHTML = '<strong>🏆 Ranking de Victorias:</strong><br>';
+            Object.entries(data.stats).forEach(([name, wins]) => {
+                statsDiv.innerHTML += `${name}: ${wins} victorias<br>`;
+            });
             
             const info = document.getElementById('game-info');
+            if (data.winnerInfo) {
+                if (data.winnerInfo.winner === 'Draw') info.textContent = "¡Empate!";
+                else {
+                    const winUser = data.players.find(p => p.symbol === data.winnerInfo.winner);
+                    info.textContent = `¡GANADOR: ${winUser ? winUser.username : data.winnerInfo.winner}! 🏆`;
+                }
+                return;
+            }
+
             if (data.players.length < 2) {
                 info.textContent = "Esperando al segundo jugador...";
             } else {
                 const turnName = data.xIsNext ? 'X' : 'O';
                 info.textContent = `Turno de: ${turnName} ${mySymbol === turnName ? '(Tú)' : ''}`;
             }
+        });
+
+        // Stickers
+        function sendSticker(emoji) { socket.emit('send sticker', emoji); }
+        socket.on('show sticker', (data) => {
+            const display = document.getElementById('sticker-display');
+            display.textContent = data.emoji;
+            display.style.opacity = '1';
+            setTimeout(() => { display.style.opacity = '0'; }, 2000);
+            renderMessage({ username: 'SISTEMA', avatar: '📢', message: `${data.from} envió un sticker!` });
         });
 
         // Lógica de Chat
@@ -234,11 +444,13 @@
 
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message received';
-            const usernameDiv = document.createElement('div');
-            usernameDiv.className = 'username';
-            usernameDiv.textContent = data.username;
-            messageDiv.appendChild(usernameDiv);
-            messageDiv.appendChild(document.createTextNode(data.message));
+            messageDiv.innerHTML = `
+                <div class="username">${data.username}</div>
+                <div class="message-content">
+                    <span class="msg-avatar">${data.avatar || '👤'}</span>
+                    <span>${data.message}</span>
+                </div>
+            `;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -246,11 +458,9 @@
         function sendMessage() {
             if (!socket) return alert('No hay conexión con el servidor');
             const input = document.getElementById('messageInput');
-            const usernameInput = document.getElementById('usernameInput');
             const message = input.value.trim();
-            const username = usernameInput.value.trim() || 'Anónimo';
             if (message) {
-                const newMessage = { username, message };
+                const newMessage = { username: currentUser.name, avatar: currentUser.avatar, message };
                 socket.emit('chat message', newMessage);
                 input.value = '';
             }
