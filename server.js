@@ -25,7 +25,7 @@ let winnerInfo = null;
 // Estado Minigolf
 let golfState = { 
   ballX: 50, ballY: 200, holeX: 450, holeY: 200, 
-  scores: { X: 0, O: 0 },
+  scores: { X: 0, O: 0, winner: null },
   obstacles: [{x: 200, y: 100, w: 20, h: 200}] 
 };
 
@@ -173,9 +173,22 @@ io.on('connection', (socket) => {
   // Lógica Minigolf
   socket.on('golf move', (data) => {
     const player = players.find(p => p.id === socket.id);
-    if (!player) return;
-    golfState = { ...golfState, ...data };
-    golfState.strokes[player.symbol]++;
+    const isTurn = (player?.symbol === 'X' && xIsNext) || (player?.symbol === 'O' && !xIsNext);
+    if (!player || !isTurn || golfState.scores.winner) return;
+
+    golfState.ballX = data.ballX;
+    golfState.ballY = data.ballY;
+    xIsNext = !xIsNext; // Cambiar turno
+
+    // Detectar si entró al hoyo (distancia pequeña)
+    const dist = Math.hypot(golfState.ballX - golfState.holeX, golfState.ballY - golfState.holeY);
+    if (dist < 20) {
+      golfState.scores[player.symbol]++;
+      golfState.ballX = 50; golfState.ballY = 200; // Reset posición bola
+      if (golfState.scores[player.symbol] >= 5) {
+        golfState.scores.winner = player.username;
+      }
+    }
     io.emit('game update', { board, xIsNext, players, winnerInfo, stats, activeGameType, golfState });
   });
 
@@ -208,7 +221,7 @@ io.on('connection', (socket) => {
 
   socket.on('reset game', () => {
     board = Array(9).fill(null);
-    golfState = { ballX: 50, ballY: 250, holeX: 450, holeY: 250, strokes: { X: 0, O: 0 } };
+    golfState = { ballX: 50, ballY: 200, holeX: 450, holeY: 200, scores: { X: 0, O: 0, winner: null }, obstacles: [{x: 200, y: 100, w: 20, h: 200}] };
     xIsNext = true;
     gameActive = true;
     winnerInfo = null;
