@@ -3,14 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat como WhatsApp</title>
+    <meta name="theme-color" content="#075e54">
+    <title>Chat & Juegos</title>
     <style>
+        :root {
+            --bg-app: #d9e4dd;
+            --bg-panel: #f7faf8;
+            --accent: #075e54;
+            --accent-light: #128c7e;
+            --green: #25d366;
+            --shadow: 0 4px 24px rgba(7, 94, 84, 0.12);
+            --radius: 14px;
+            --font: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
         body {
-            font-family: Arial, sans-serif;
-            background-color: #e5ddd5;
+            font-family: var(--font);
+            background: var(--bg-app);
+            background-image:
+                radial-gradient(ellipse 120% 80% at 50% -20%, rgba(37, 211, 102, 0.18), transparent),
+                radial-gradient(ellipse 80% 50% at 100% 100%, rgba(7, 94, 84, 0.08), transparent);
             margin: 0;
             padding: 0;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
         #main-wrapper {
             display: flex;
@@ -18,54 +33,166 @@
             height: 100vh;
             position: relative;
         }
-        /* Menú de Juegos */
         #game-menu {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 14px;
+            left: 14px;
             z-index: 10;
-            background: white;
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            padding: 14px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(7, 94, 84, 0.1);
+            max-width: 240px;
         }
-        /* Área del Juego */
-        #game-area {
+        #game-menu button,
+        #game-menu select {
+            font-family: inherit;
+        }
+        #game-menu > button {
+            display: block;
+            width: 100%;
+            margin-bottom: 8px;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+        }
+        #game-menu > button:last-of-type { margin-bottom: 0; }
+        #game-menu > button:hover {
+            background: var(--accent-light);
+        }
+        #game-menu > button:active { transform: scale(0.98); }
+        .game-menu-extra {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(7, 94, 84, 0.12);
+        }
+        .game-menu-extra label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+        .game-menu-extra select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            background: #fff;
+            font-size: 0.85rem;
+        }
+        .btn-menu-secondary {
+            margin-top: 10px !important;
+            background: var(--accent-light) !important;
+        }
+        .sticker-bar {
+            margin-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .btn-emoji {
+            padding: 8px 14px;
+            font-size: 1.25rem;
+            border: none;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: transform 0.12s;
+        }
+        .btn-emoji:hover { transform: scale(1.08); }
+        .friend-add-row {
+            margin-top: 14px;
+            display: flex;
+            gap: 8px;
+            max-width: 340px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .friend-add-row input {
+            flex: 1;
+            min-width: 140px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid #cfd8d6;
+            font-family: inherit;
+        }
+        .btn-friend {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 12px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .hint-sala {
+            font-size: 0.78rem;
+            color: #5a716b;
+            max-width: 340px;
+            margin: 10px auto 0;
+            line-height: 1.45;
+        }
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background-color: #f0f2f5;
+            background: linear-gradient(180deg, var(--bg-panel) 0%, #eef2f0 100%);
             transition: margin-right 0.3s ease;
+        }
+        #game-title {
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+        }
+        #game-info {
+            color: #4a635e;
+            font-size: 0.95rem;
         }
         .board {
             display: grid;
             grid-template-columns: repeat(3, 100px);
             gap: 10px;
-            background-color: #075e54;
-            padding: 10px;
-            border-radius: 10px;
+            background: linear-gradient(145deg, var(--accent) 0%, #054d44 100%);
+            padding: 12px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
         }
         #golf-canvas {
-            background: #2ecc71;
-            border: 5px solid #27ae60;
-            border-radius: 15px;
+            background: linear-gradient(180deg, #3ddc84 0%, #2ecc71 100%);
+            border: 4px solid #1e8449;
+            border-radius: var(--radius);
             cursor: crosshair;
+            box-shadow: var(--shadow);
         }
         .cell {
             width: 100px;
             height: 100px;
-            background-color: white;
+            background-color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 2em;
             font-weight: bold;
             cursor: pointer;
-            border-radius: 5px;
+            border-radius: 10px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+            transition: background 0.15s, transform 0.1s;
         }
-        .cell:hover { background-color: #f9f9f9; }
+        .cell:hover { background-color: #f0fdf4; }
+        .cell:active { transform: scale(0.97); }
         .cell.winner {
             background-color: #25d366 !important;
             color: white;
@@ -77,18 +204,58 @@
             100% { transform: scale(1); }
         }
         
-        /* Login Overlay */
         #login-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(7, 94, 84, 0.95);
+            background: linear-gradient(160deg, #04352f 0%, var(--accent) 45%, var(--accent-light) 100%);
             z-index: 200;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             text-align: center;
+            padding: 24px;
         }
+        .login-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            padding: 2rem 2.25rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+            max-width: 380px;
+        }
+        .login-card h2 { margin: 0 0 0.5rem; font-size: 1.5rem; font-weight: 700; }
+        .login-card .login-sub { opacity: 0.9; font-size: 0.9rem; margin-bottom: 1.25rem; }
+        #loginName {
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            width: 100%;
+            max-width: 260px;
+            font-size: 1rem;
+            background: rgba(255,255,255,0.95);
+            color: #1a1a1a;
+        }
+        #loginName:focus {
+            outline: none;
+            border-color: var(--green);
+            box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.35);
+        }
+        .btn-primary {
+            padding: 12px 32px;
+            border-radius: 12px;
+            border: none;
+            background: var(--green);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-top: 1rem;
+            transition: filter 0.2s, transform 0.15s;
+        }
+        .btn-primary:hover { filter: brightness(1.08); }
+        .btn-primary:active { transform: scale(0.98); }
         .avatar-select {
             display: flex;
             gap: 15px;
@@ -110,39 +277,45 @@
 
         /* Chat Lateral */
         #chat-sidebar {
-            width: 350px;
+            width: min(380px, 100vw - 16px);
             height: 100%;
-            background-color: #fff;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(8px);
             position: absolute;
-            right: -350px;
+            right: -420px;
             top: 0;
             display: flex;
             flex-direction: column;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
-            transition: right 0.3s ease;
+            box-shadow: -8px 0 32px rgba(7, 94, 84, 0.15);
+            transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 100;
+            border-left: 1px solid rgba(7, 94, 84, 0.08);
         }
         #chat-sidebar.open { right: 0; }
 
         .header {
-            background-color: #075e54;
+            background: linear-gradient(135deg, var(--accent) 0%, #0a5c52 100%);
             color: white;
-            padding: 10px;
+            padding: 14px 12px;
             text-align: center;
         }
+        .header h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; }
         .chat-container {
             flex: 1;
             overflow-y: auto;
-            padding: 10px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
+            background: linear-gradient(180deg, #ece5dc 0%, #e6ded4 100%);
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23075e54' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
         .message {
-            margin: 5px 0;
-            padding: 10px;
-            border-radius: 10px;
-            max-width: 70%;
+            margin: 6px 0;
+            padding: 10px 12px;
+            border-radius: 12px;
+            max-width: 85%;
             word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
         }
         .message .username {
             font-weight: bold;
@@ -150,16 +323,106 @@
             margin-bottom: 5px;
         }
         .message.sent {
-            background-color: #dcf8c6;
+            background: linear-gradient(135deg, #d9fdd3 0%, #c8f7bc 100%);
             align-self: flex-end;
+            border-bottom-right-radius: 4px;
         }
         .message.received {
-            background-color: white;
+            background: #fff;
             align-self: flex-start;
+            border-bottom-left-radius: 4px;
         }
         .message-content { display: flex; align-items: center; gap: 8px; }
         .msg-avatar { font-size: 1.2rem; }
         .private-chat-label { background: #075e54; color: white; padding: 2px 5px; border-radius: 4px; font-size: 0.7rem; }
+
+        .chat-tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            background: #f8f9fa;
+        }
+        .chat-tabs button {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        .chat-tabs button:hover { color: #075e54; background: rgba(7,94,84,0.06); }
+        .chat-tabs button.active {
+            color: #075e54;
+            border-bottom-color: #25d366;
+            background: #fff;
+        }
+        #chat-panels { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .chat-panel-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .friends-panel-inner {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+        #friendsListView, #friendsChatView {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+        #friendsChatView { display: none; }
+        .friends-toolbar {
+            padding: 8px 10px;
+            background: #eceff1;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .friends-toolbar button {
+            border: none;
+            background: #075e54;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        #friendsList {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .friend-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+        }
+        .friend-row:hover { background: #e8f5e9; border-color: #25d366; }
+        .friend-status.on { color: #25d366; font-size: 1.1rem; }
+        .friend-status.off { color: #bbb; font-size: 0.9rem; }
+        .friends-hint {
+            font-size: 0.8rem;
+            color: #666;
+            padding: 10px;
+            line-height: 1.4;
+        }
+        .msg-time { font-size: 0.65rem; color: #888; margin-top: 4px; }
         
         /* Stickers Pop */
         #sticker-display {
@@ -174,61 +437,108 @@
             transition: opacity 0.5s;
         }
         .online-list {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            max-height: 150px;
+            padding: 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            max-height: 160px;
             overflow-y: auto;
+            background: #fafafa;
         }
+        .online-list strong { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
         .user-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 5px;
+            padding: 8px 6px;
             font-size: 0.9rem;
+            border-radius: 10px;
+            margin-top: 4px;
         }
-        .stats-box {
-            margin-top: 10px;
+        .user-item:hover { background: rgba(7, 94, 84, 0.06); }
+        .user-item button {
+            padding: 6px 12px;
             font-size: 0.8rem;
-            background: #fff3cd;
-            padding: 5px;
-            border-radius: 5px;
+            border: none;
+            border-radius: 999px;
+            background: var(--green);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+        }
+        .btn-reset-game {
+            margin-top: 18px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 12px;
+            background: #546e7a;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        #stats-display {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(255, 243, 205, 0.95);
+            border: 1px solid rgba(212, 167, 0, 0.25);
+            font-size: 0.85rem;
+            color: #5d4e00;
+            max-width: 320px;
         }
         .input-container {
             display: flex;
-            padding: 10px;
-            background-color: #f0f0f0;
+            padding: 12px;
+            gap: 10px;
+            background: #f0f2f5;
+            border-top: 1px solid rgba(0,0,0,0.06);
         }
         .input-container input {
             flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 20px;
-            margin-right: 10px;
+            padding: 12px 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 24px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            background: #fff;
+        }
+        .input-container input:focus {
+            outline: none;
+            border-color: var(--green);
+            box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.2);
         }
         .input-container button {
-            padding: 10px 20px;
+            padding: 12px 20px;
             border: none;
-            border-radius: 20px;
-            background-color: #25d366;
+            border-radius: 24px;
+            background: var(--green);
             color: white;
             cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+            transition: filter 0.2s;
         }
-        .input-container button:hover {
-            background-color: #128c7e;
-        }
-        
-        /* Botón para deslizar chat */
+        .input-container button:hover { filter: brightness(1.05); }
+
         #chat-toggle {
             position: absolute;
             right: 20px;
             top: 20px;
             z-index: 101;
-            padding: 10px 20px;
-            background: #25d366;
+            padding: 12px 20px;
+            background: var(--green);
             color: white;
             border: none;
-            border-radius: 20px;
+            border-radius: 999px;
             cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(37, 211, 102, 0.45);
+            transition: transform 0.15s, box-shadow 0.2s;
+        }
+        #chat-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
         }
         /* Guía y Turno */
         .my-turn-indicator {
@@ -244,9 +554,10 @@
 </head>
 <body>
     <div id="login-overlay">
-        <div>
-            <h2>Bienvenido al Chat & Juegos</h2>
-            <input type="text" id="loginName" placeholder="Tu nombre..." style="padding:10px; border-radius:20px; border:none; width:200px;"><br>
+        <div class="login-card">
+            <h2>Chat & Juegos</h2>
+            <p class="login-sub">Elige nombre y avatar para entrar al chat global y a las partidas.</p>
+            <input type="text" id="loginName" placeholder="Tu nombre…" maxlength="32" autocomplete="username">
             <div class="avatar-select" id="avatarPicker">
                 <span class="avatar-option" onclick="selectAvatar(this, '🐱')">🐱</span>
                 <span class="avatar-option" onclick="selectAvatar(this, '🐶')">🐶</span>
@@ -254,19 +565,7 @@
                 <span class="avatar-option" onclick="selectAvatar(this, '🐸')">🐸</span>
                 <span class="avatar-option" onclick="selectAvatar(this, '🐰')">🐰</span>
             </div>
-            <button onclick="doLogin()" style="padding:10px 30px; border-radius:20px; border:none; background:#25d366; color:white; cursor:pointer; font-weight:bold;">ENTRAR</button>
-        </div>
-    </div>
-
-    <div id="private-chat-window" style="display:none; position:fixed; right:360px; bottom:20px; width:300px; height:400px; background:white; z-index:500; box-shadow:0 0 10px rgba(0,0,0,0.5); border-radius:10px; flex-direction:column;">
-        <div class="header" style="display:flex; justify-content:space-between;">
-            <span id="private-with">Chat Privado</span>
-            <button onclick="closePrivateChat()" style="background:none; border:none; color:white; cursor:pointer;">✖</button>
-        </div>
-        <div id="privateMessagesContainer" style="flex:1; overflow-y:auto; padding:10px;"></div>
-        <div class="input-container">
-            <input type="text" id="privateInput" placeholder="Mensaje privado...">
-            <button onclick="sendPrivateMessage()">➡</button>
+            <button type="button" class="btn-primary" onclick="doLogin()">Entrar</button>
         </div>
     </div>
 
@@ -278,14 +577,14 @@
         <div id="game-menu">
             <button onclick="socket.emit('change game', 'tictactoe')">⭕ Tres en Raya</button>
             <button onclick="socket.emit('change game', 'minigolf')">⛳ Minigolf</button>
-            <div style="margin-top:10px; font-size:0.8rem; max-width:220px;">
-                <label for="inviteGameType">Invitar a jugar:</label>
-                <select id="inviteGameType" style="width:100%; margin-top:4px;">
+            <div class="game-menu-extra">
+                <label for="inviteGameType">Modo al invitar</label>
+                <select id="inviteGameType">
                     <option value="tictactoe">Tres en raya</option>
                     <option value="minigolf">Minigolf</option>
                 </select>
             </div>
-            <button type="button" style="margin-top:8px; width:100%;" onclick="createDuelRoomOnly()">🔗 Crear sala (enlace)</button>
+            <button type="button" class="btn-menu-secondary" onclick="createDuelRoomOnly()">Crear sala con enlace</button>
         </div>
 
         <div id="game-area">
@@ -312,39 +611,56 @@
                 <p>Arrastra desde la bola roja para apuntar y suelta para lanzar.</p>
             </div>
 
-            <div style="margin-top: 10px;">
-                <button onclick="sendSticker('😂')">😂</button>
-                <button onclick="sendSticker('🔥')">🔥</button>
-                <button onclick="sendSticker('💩')">💩</button>
-                <button onclick="sendSticker('🤡')">🤡</button>
+            <div class="sticker-bar">
+                <button type="button" class="btn-emoji" onclick="sendSticker('😂')">😂</button>
+                <button type="button" class="btn-emoji" onclick="sendSticker('🔥')">🔥</button>
+                <button type="button" class="btn-emoji" onclick="sendSticker('💩')">💩</button>
+                <button type="button" class="btn-emoji" onclick="sendSticker('🤡')">🤡</button>
             </div>
 
-            <div style="margin-top: 5px;">
-                <input type="text" id="friendNameInput" placeholder="Nombre del amigo...">
-                <button onclick="socket.emit('add friend', document.getElementById('friendNameInput').value)">Añadir Amigo</button>
+            <div class="friend-add-row">
+                <input type="text" id="friendNameInput" placeholder="Nombre del amigo…">
+                <button type="button" class="btn-friend" onclick="addFriendByName()">Añadir</button>
             </div>
-            <p style="font-size:0.75rem; color:#555; max-width:320px; margin:8px 0 0;">Al invitar desde la lista te lleva a <strong>sala privada</strong>: ahí se ven ambos nombres, chat solo de esa sala y partidas aisladas. Recargar conserva nombres y mensajes.</p>
+            <p class="hint-sala">Invitar desde el panel lateral abre una <strong>sala privada</strong> con enlace: nombres, chat de sala y partida guardados al recargar.</p>
 
-            <button onclick="socket.emit('reset game')" id="btnReset" style="display:none; margin-top:20px; padding:10px;">Reiniciar Juego</button>
+            <button type="button" class="btn-reset-game" onclick="socket.emit('reset game')" id="btnReset" style="display:none;">Reiniciar partida</button>
             <div id="stats-display" style="margin-top:20px;"></div>
         </div>
 
         <div id="chat-sidebar">
             <div class="header">
-                <h3>Chat Global</h3>
+                <h3 id="chatSidebarTitle">Chat global</h3>
                 <div id="status" style="font-size: 11px; color: #ffd700;">Conectando...</div>
             </div>
             <div class="online-list" id="onlineUsers">
-                <strong>Usuarios en línea:</strong>
+                <strong>En línea</strong>
             </div>
-            <div style="display:flex; border-bottom:1px solid #ddd;">
-                <button onclick="showChat('global')" style="flex:1; padding:5px;">Global</button>
-                <button onclick="showChat('friends')" style="flex:1; padding:5px;">Amigos</button>
+            <div class="chat-tabs" role="tablist">
+                <button type="button" id="tabGlobal" class="active" onclick="showChat('global')">Global</button>
+                <button type="button" id="tabFriends" onclick="showChat('friends')">Amigos</button>
             </div>
-            <div class="chat-container" id="chatContainer"></div>
+            <div id="chat-panels">
+                <div id="panelGlobal" class="chat-panel-section">
+                    <div class="chat-container" id="chatContainer"></div>
+                </div>
+                <div id="panelFriends" class="chat-panel-section" style="display:none;">
+                    <div id="friendsListView" class="friends-panel-inner">
+                        <p class="friends-hint">Toca un amigo para abrir el chat privado. También puedes pulsar el nombre de alguien en <strong>En línea</strong> (no hace falta que esté en tu lista).</p>
+                        <div id="friendsList"></div>
+                    </div>
+                    <div id="friendsChatView" class="friends-panel-inner">
+                        <div class="friends-toolbar">
+                            <button type="button" onclick="backToFriendsList()">← Lista</button>
+                            <span id="friendsChatTitle" style="font-weight:bold;color:#333;"></span>
+                        </div>
+                        <div class="chat-container" id="friendsChatContainer"></div>
+                    </div>
+                </div>
+            </div>
             <div class="input-container">
-                <input type="text" id="messageInput" placeholder="Mensaje...">
-                <button onclick="sendMessage()">Enviar</button>
+                <input type="text" id="messageInput" placeholder="Escribe un mensaje…">
+                <button type="button" onclick="sendMessage()">Enviar</button>
             </div>
         </div>
     </div>
@@ -353,13 +669,18 @@
     <script>
         const socket = typeof io !== 'undefined' ? io() : null;
         let currentUser = JSON.parse(localStorage.getItem('chatProfile')) || { name: '', avatar: '🐱' };
-        let activePrivateUser = null;
+        let chatMode = 'global';
+        let myFriends = [];
+        let selectedPrivatePartner = null;
+        const globalMessagesCache = [];
+        const lastOnlineNames = new Set();
 
         window.onload = () => {
             if (currentUser.name) {
                 document.getElementById('login-overlay').style.display = 'none';
                 socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
             }
+            showChat('global', true);
         };
 
         function doLogin() {
@@ -371,14 +692,107 @@
             socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
         }
 
-        function openPrivateChat(userName) {
-            activePrivateUser = userName;
-            document.getElementById('private-chat-window').style.display = 'flex';
-            document.getElementById('private-with').textContent = 'Chat con ' + userName;
-            document.getElementById('privateMessagesContainer').innerHTML = '';
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatMsgTime(ts) {
+            if (!ts) return '';
+            try {
+                const d = new Date(ts);
+                return d.toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+            } catch (e) { return ''; }
+        }
+
+        function addFriendByName() {
+            const v = document.getElementById('friendNameInput').value.trim();
+            if (!v) return alert('Escribe el nombre del amigo');
+            socket.emit('add friend', v);
+        }
+
+        function showChat(mode, silent) {
+            chatMode = mode === 'friends' ? 'friends' : 'global';
+            const tabG = document.getElementById('tabGlobal');
+            const tabF = document.getElementById('tabFriends');
+            const panelG = document.getElementById('panelGlobal');
+            const panelF = document.getElementById('panelFriends');
+            const title = document.getElementById('chatSidebarTitle');
+            const input = document.getElementById('messageInput');
+
+            tabG.classList.toggle('active', chatMode === 'global');
+            tabF.classList.toggle('active', chatMode === 'friends');
+            panelG.style.display = chatMode === 'global' ? 'flex' : 'none';
+            panelF.style.display = chatMode === 'friends' ? 'flex' : 'none';
+
+            if (chatMode === 'global') {
+                title.textContent = 'Chat global';
+                input.placeholder = 'Mensaje para todos…';
+                renderGlobalFromCache();
+            } else {
+                title.textContent = 'Amigos';
+                renderFriendsList();
+                const listV = document.getElementById('friendsListView');
+                const chatV = document.getElementById('friendsChatView');
+                if (selectedPrivatePartner) {
+                    listV.style.display = 'none';
+                    chatV.style.display = 'flex';
+                    document.getElementById('friendsChatTitle').textContent = selectedPrivatePartner;
+                    input.placeholder = 'Mensaje privado para ' + selectedPrivatePartner + '…';
+                } else {
+                    listV.style.display = 'flex';
+                    chatV.style.display = 'none';
+                    input.placeholder = 'Elige un chat en la lista o en línea…';
+                }
+            }
+            if (!silent) input.focus();
+        }
+
+        function backToFriendsList() {
+            selectedPrivatePartner = null;
+            document.getElementById('friendsListView').style.display = 'flex';
+            document.getElementById('friendsChatView').style.display = 'none';
+            document.getElementById('friendsChatContainer').innerHTML = '';
+            showChat('friends', true);
+        }
+
+        function openPrivateSidebarChat(userName) {
+            if (!userName || userName === currentUser.name) return;
+            selectedPrivatePartner = userName;
+            showChat('friends', true);
+            document.getElementById('friendsListView').style.display = 'none';
+            document.getElementById('friendsChatView').style.display = 'flex';
+            document.getElementById('friendsChatTitle').textContent = userName;
+            document.getElementById('messageInput').placeholder = 'Mensaje privado para ' + userName + '…';
             socket.emit('get private history', userName);
         }
-        function closePrivateChat() { document.getElementById('private-chat-window').style.display = 'none'; activePrivateUser = null; }
+
+        function renderFriendsList() {
+            const el = document.getElementById('friendsList');
+            if (!el) return;
+            el.innerHTML = '';
+            if (!myFriends.length) {
+                el.innerHTML = '<p class="friends-hint">No tienes amigos guardados. Añade uno con su nombre exacto (tiene que haberse conectado al menos una vez).</p>';
+                return;
+            }
+            myFriends.forEach((name) => {
+                const row = document.createElement('div');
+                row.className = 'friend-row';
+                const left = document.createElement('span');
+                left.textContent = name;
+                const st = document.createElement('span');
+                st.className = 'friend-status ' + (lastOnlineNames.has(name) ? 'on' : 'off');
+                st.textContent = lastOnlineNames.has(name) ? '●' : '○';
+                st.title = lastOnlineNames.has(name) ? 'En línea' : 'Fuera de línea';
+                row.appendChild(left);
+                row.appendChild(st);
+                row.onclick = () => openPrivateSidebarChat(name);
+                el.appendChild(row);
+            });
+        }
 
         function selectAvatar(el, icon) {
             document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
@@ -387,21 +801,108 @@
         }
 
         const chatContainer = document.getElementById('chatContainer');
+        const friendsChatContainer = document.getElementById('friendsChatContainer');
         const statusDiv = document.getElementById('status');
 
         socket.on('update user list', (users) => {
+            lastOnlineNames.clear();
+            users.forEach((u) => lastOnlineNames.add(u.username));
+
             const list = document.getElementById('onlineUsers');
-            list.innerHTML = '<strong>En línea:</strong>';
-            users.forEach(u => {
-                if(u.id === socket.id) return;
-                list.innerHTML += `<div class="user-item">
-                    <span onclick="openPrivateChat('${u.username}')" style="cursor:pointer;">${u.avatar} ${u.username}</span>
-                    <div>
-                        <button onclick="invite('${u.id}')">Invitar</button>
-                    </div>
-                </div>`;
+            list.innerHTML = '';
+            const head = document.createElement('strong');
+            head.textContent = 'En línea';
+            list.appendChild(head);
+
+            users.forEach((u) => {
+                if (u.id === socket.id) return;
+                const row = document.createElement('div');
+                row.className = 'user-item';
+                const nameSpan = document.createElement('span');
+                nameSpan.style.cursor = 'pointer';
+                nameSpan.style.textDecoration = 'underline';
+                nameSpan.textContent = (u.avatar || '👤') + ' ' + u.username;
+                nameSpan.title = 'Abrir chat privado';
+                nameSpan.onclick = () => openPrivateSidebarChat(u.username);
+                const actions = document.createElement('div');
+                const btn = document.createElement('button');
+                btn.textContent = 'Invitar';
+                btn.onclick = () => invite(u.id);
+                actions.appendChild(btn);
+                row.appendChild(nameSpan);
+                row.appendChild(actions);
+                list.appendChild(row);
             });
+            if (chatMode === 'friends') renderFriendsList();
         });
+
+        socket.on('friends data', (data) => {
+            myFriends = (data && data.friends) || [];
+            if (chatMode === 'friends') renderFriendsList();
+        });
+
+        socket.on('friend add result', (res) => {
+            if (!res) return;
+            if (res.ok) {
+                alert('Amigo añadido: ' + res.friendName);
+                document.getElementById('friendNameInput').value = '';
+            } else if (res.error === 'not_found') {
+                alert('No existe ningún usuario con el nombre "' + res.friendName + '". Debe entrar al menos una vez con ese nombre.');
+            } else {
+                alert('No se pudo añadir el amigo.');
+            }
+        });
+
+        socket.on('load private history', (msgs) => {
+            if (chatMode !== 'friends' || !selectedPrivatePartner || !friendsChatContainer) return;
+            friendsChatContainer.innerHTML = '';
+            (msgs || []).forEach((m) => appendPrivateBubble(m));
+            friendsChatContainer.scrollTop = friendsChatContainer.scrollHeight;
+        });
+
+        socket.on('private message', (msg) => {
+            if (chatMode !== 'friends' || !selectedPrivatePartner || !msg) return;
+            const other = selectedPrivatePartner;
+            if (msg.from !== other && msg.from !== currentUser.name) return;
+            appendPrivateBubble(msg);
+            friendsChatContainer.scrollTop = friendsChatContainer.scrollHeight;
+        });
+
+        function appendPrivateBubble(msg) {
+            const isMe = msg.from === currentUser.name;
+            const div = document.createElement('div');
+            div.className = 'message ' + (isMe ? 'sent' : 'received');
+            div.innerHTML =
+                '<div class="username">' + escapeHtml(msg.from) + '</div>' +
+                '<div class="message-content"><span>' + escapeHtml(msg.message) + '</span></div>' +
+                '<div class="msg-time">' + escapeHtml(formatMsgTime(msg.time)) + '</div>';
+            friendsChatContainer.appendChild(div);
+        }
+
+        function appendGlobalBubble(data) {
+            const noMessages = document.getElementById('no-messages');
+            if (noMessages) noMessages.remove();
+            const isMe = data.username === currentUser.name;
+            const div = document.createElement('div');
+            div.className = 'message ' + (isMe ? 'sent' : 'received');
+            div.innerHTML =
+                '<div class="username">' + escapeHtml(data.username) + '</div>' +
+                '<div class="message-content">' +
+                '<span class="msg-avatar">' + (data.avatar || '👤') + '</span>' +
+                '<span>' + escapeHtml(data.message) + '</span></div>';
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function renderGlobalFromCache() {
+            chatContainer.innerHTML = '';
+            if (!globalMessagesCache.length) {
+                chatContainer.innerHTML = '<div id="no-messages" style="text-align: center; color: #777; margin-top: 20px;">No hay mensajes aún. ¡Sé el primero!</div>';
+                return;
+            }
+            globalMessagesCache.forEach((m) => appendGlobalBubble(m));
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
 
         function getInviteGameType() {
             const sel = document.getElementById('inviteGameType');
@@ -540,50 +1041,39 @@
             display.textContent = data.emoji;
             display.style.opacity = '1';
             setTimeout(() => { display.style.opacity = '0'; }, 2000);
-            renderMessage({ username: 'SISTEMA', avatar: '📢', message: `${data.from} envió un sticker!` });
+            const sys = { username: 'SISTEMA', avatar: '📢', message: `${data.from} envió un sticker` };
+            globalMessagesCache.push(sys);
+            if (chatMode === 'global') appendGlobalBubble(sys);
         });
-
-        // Lógica de Chat
-        function renderMessage(data) {
-            const noMessages = document.getElementById('no-messages');
-            if (noMessages) noMessages.remove();
-
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message received';
-            messageDiv.innerHTML = `
-                <div class="username">${data.username}</div>
-                <div class="message-content">
-                    <span class="msg-avatar">${data.avatar || '👤'}</span>
-                    <span>${data.message}</span>
-                </div>
-            `;
-            chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
 
         function sendMessage() {
             if (!socket) return alert('No hay conexión con el servidor');
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
-            if (message) {
-                const newMessage = { username: currentUser.name, avatar: currentUser.avatar, message };
-                socket.emit('chat message', newMessage);
-                input.value = '';
+            if (!message) return;
+            if (chatMode === 'global') {
+                const payload = { username: currentUser.name, avatar: currentUser.avatar, message };
+                socket.emit('chat message', payload);
+            } else {
+                if (!selectedPrivatePartner) {
+                    alert('Abre un chat privado: elige un amigo en la lista o pulsa un nombre en “En línea”.');
+                    return;
+                }
+                socket.emit('private message', { to: selectedPrivatePartner, message });
             }
+            input.value = '';
         }
 
         if (socket) {
             socket.on('chat message', (data) => {
-                renderMessage(data);
+                globalMessagesCache.push(data);
+                if (chatMode === 'global') appendGlobalBubble(data);
             });
 
             socket.on('load messages', (loadedMessages) => {
-                chatContainer.innerHTML = '';
-                if (loadedMessages.length === 0) {
-                    chatContainer.innerHTML = '<div id="no-messages" style="text-align: center; color: #777; margin-top: 20px;">No hay mensajes aún. ¡Sé el primero!</div>';
-                } else {
-                    loadedMessages.forEach(renderMessage);
-                }
+                globalMessagesCache.length = 0;
+                (loadedMessages || []).forEach((m) => globalMessagesCache.push(m));
+                if (chatMode === 'global') renderGlobalFromCache();
             });
         }
 

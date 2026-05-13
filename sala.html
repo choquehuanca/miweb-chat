@@ -3,20 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#075e54">
   <title>Sala privada — Chat & Juegos</title>
   <style>
     * { box-sizing: border-box; }
+    :root {
+      --accent: #075e54;
+      --accent-light: #128c7e;
+      --green: #25d366;
+      --font: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(160deg, #0b3d2e 0%, #075e54 40%, #128c7e 100%);
+      font-family: var(--font);
+      background: linear-gradient(165deg, #062c27 0%, var(--accent) 42%, var(--accent-light) 100%);
       min-height: 100vh;
       color: #111;
+      -webkit-font-smoothing: antialiased;
     }
     .topbar {
-      background: rgba(0,0,0,0.25);
+      background: rgba(0,0,0,0.28);
+      backdrop-filter: blur(10px);
       color: #fff;
-      padding: 12px 16px;
+      padding: 14px 18px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -51,13 +60,14 @@
       .layout { grid-template-columns: 1fr; }
     }
     .panel {
-      background: #f0f2f5;
-      border-radius: 14px;
+      background: rgba(247, 250, 248, 0.98);
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      border: 1px solid rgba(255,255,255,0.35);
     }
     .panel-head {
-      background: #075e54;
+      background: linear-gradient(135deg, var(--accent) 0%, #0a5c52 100%);
       color: #fff;
       padding: 10px 14px;
       font-weight: bold;
@@ -66,10 +76,11 @@
     .game-body { padding: 16px; text-align: center; }
     .toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px; }
     .toolbar button, .actions button {
-      padding: 8px 14px;
+      padding: 10px 16px;
       border: none;
-      border-radius: 20px;
-      background: #25d366;
+      border-radius: 999px;
+      background: var(--green);
+      font-family: inherit;
       color: #fff;
       cursor: pointer;
       font-weight: 600;
@@ -79,9 +90,10 @@
       display: inline-grid;
       grid-template-columns: repeat(3, 88px);
       gap: 8px;
-      background: #075e54;
-      padding: 10px;
-      border-radius: 12px;
+      background: linear-gradient(145deg, var(--accent) 0%, #054d44 100%);
+      padding: 12px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(7, 94, 84, 0.25);
     }
     .cell {
       width: 88px; height: 88px;
@@ -131,7 +143,8 @@
     #login-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(7, 94, 84, 0.96);
+      background: rgba(4, 40, 36, 0.88);
+      backdrop-filter: blur(8px);
       z-index: 50;
       display: flex;
       align-items: center;
@@ -140,21 +153,35 @@
       text-align: center;
       padding: 20px;
     }
-    #login-overlay input {
-      padding: 10px 14px;
+    .sala-login-card {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 20px;
-      border: none;
-      width: min(280px, 90vw);
-      margin: 10px 0;
+      padding: 1.75rem 2rem;
+      max-width: 400px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
     }
-    #login-overlay button {
-      padding: 10px 24px;
-      border-radius: 20px;
+    .sala-login-card h2 { margin: 0 0 0.5rem; font-size: 1.4rem; }
+    .sala-login-card p { margin: 0 0 1rem; opacity: 0.92; font-size: 0.9rem; line-height: 1.45; }
+    #loginName {
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.25);
+      width: min(280px, 90vw);
+      margin: 0 0 12px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    #login-overlay .btn-sala {
+      padding: 12px 28px;
+      border-radius: 12px;
       border: none;
-      background: #25d366;
+      background: var(--green);
       color: #fff;
-      font-weight: bold;
+      font-weight: 700;
       cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
     }
     .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
     .toast {
@@ -195,11 +222,11 @@
 </head>
 <body>
   <div id="login-overlay">
-    <div>
+    <div class="sala-login-card">
       <h2>Entra a la sala</h2>
-      <p style="max-width:320px;opacity:0.9">Tu nombre se guarda en este navegador y se sincroniza con el servidor para que no se pierda al recargar.</p>
-      <input type="text" id="loginName" placeholder="Tu nombre..." maxlength="32">
-      <div><button type="button" onclick="completeLogin()">Continuar</button></div>
+      <p>Tu nombre se guarda en el navegador y en el servidor para que no se pierda al recargar.</p>
+      <input type="text" id="loginName" placeholder="Tu nombre…" maxlength="32" autocomplete="username">
+      <div><button type="button" class="btn-sala" onclick="completeLogin()">Continuar</button></div>
     </div>
   </div>
 

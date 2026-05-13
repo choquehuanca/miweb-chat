@@ -206,7 +206,8 @@ io.on('connection', (socket) => {
     
     onlineUsers[socket.id] = { ...persistentUsers[userId], id: socket.id };
     io.emit('update user list', Object.values(onlineUsers));
-    
+    socket.emit('friends data', { friends: persistentUsers[userId].friends || [] });
+
     if (players.length < 2) {
       const symbol = players.length === 0 ? 'X' : 'O';
       players.push({ id: socket.id, username: userData.username, avatar: userData.avatar, symbol });
@@ -216,14 +217,22 @@ io.on('connection', (socket) => {
   });
 
   socket.on('add friend', (friendName) => {
+    const raw = String(friendName || '').trim();
     const currentUser = onlineUsers[socket.id];
-    if (currentUser && persistentUsers[friendName] && friendName !== currentUser.username) {
-      if (!persistentUsers[currentUser.username].friends.includes(friendName)) {
-        persistentUsers[currentUser.username].friends.push(friendName);
-        saveUsers();
-        socket.emit('update user list', Object.values(onlineUsers));
-      }
+    if (!currentUser || !raw || raw === currentUser.username) {
+      socket.emit('friend add result', { ok: false, error: 'invalid' });
+      return;
     }
+    if (!persistentUsers[raw]) {
+      socket.emit('friend add result', { ok: false, error: 'not_found', friendName: raw });
+      return;
+    }
+    if (!persistentUsers[currentUser.username].friends.includes(raw)) {
+      persistentUsers[currentUser.username].friends.push(raw);
+      saveUsers();
+    }
+    socket.emit('friend add result', { ok: true, friendName: raw });
+    socket.emit('friends data', { friends: persistentUsers[currentUser.username].friends || [] });
   });
 
   socket.on('private message', ({ to, message }) => {
