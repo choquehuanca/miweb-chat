@@ -241,6 +241,7 @@
     <div class="actions">
       <button type="button" class="secondary" onclick="copyInvite()">Copiar enlace</button>
       <button type="button" class="secondary" onclick="goHome()">Volver al inicio</button>
+      <button type="button" class="secondary" onclick="forgetThisRoom()">Olvidar sala</button>
     </div>
   </div>
   <div id="peerBanner" class="banner" style="display:none;"></div>
@@ -314,6 +315,14 @@
 
     function goHome() {
       window.location.href = '/';
+    }
+
+    function forgetThisRoom() {
+      try {
+        localStorage.removeItem('activeDuelRoom');
+        localStorage.removeItem('duelPendingRoom');
+      } catch (e) {}
+      toast('Sala quitada del acceso rápido');
     }
 
     function copyInvite() {
@@ -453,6 +462,21 @@
           myRole = res.role;
           mySymbol = res.role === 'host' ? 'X' : 'O';
           localStorage.setItem('duelPendingRoom', roomCode);
+          try {
+            const st = res.state;
+            let label = 'Sala ' + roomCode;
+            if (st && st.host && st.guest) {
+              label = st.host.username + ' vs ' + st.guest.username;
+            } else if (st && st.host) {
+              label = 'Con ' + st.host.username;
+            }
+            localStorage.setItem('activeDuelRoom', JSON.stringify({
+              code: roomCode,
+              label,
+              hostUsername: st && st.host ? st.host.username : '',
+              guestUsername: st && st.guest ? st.guest.username : ''
+            }));
+          } catch (e) {}
           if (res.state) applyState(res.state);
           toast('Sala lista');
         }

@@ -34,17 +34,14 @@
             position: relative;
         }
         #game-menu {
-            position: absolute;
-            top: 14px;
-            left: 14px;
-            z-index: 10;
+            max-width: 240px;
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(10px);
             padding: 14px;
-            border-radius: var(--radius);
+            border-radius: 0 0 var(--radius) var(--radius);
             box-shadow: var(--shadow);
             border: 1px solid rgba(7, 94, 84, 0.1);
-            max-width: 240px;
+            border-top: none;
         }
         #game-menu button,
         #game-menu select {
@@ -550,6 +547,139 @@
             animation: bounce 1s infinite;
         }
         @keyframes bounce { 0%, 100% { top: -40px; } 50% { top: -50px; } }
+
+        #profile-bar {
+            align-self: stretch;
+            max-width: 520px;
+            margin: 0 auto 8px;
+            padding: 10px 16px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 999px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(7, 94, 84, 0.1);
+        }
+        #profile-bar.visible { display: flex; }
+        #profile-bar .p-avatar { font-size: 2rem; line-height: 1; }
+        #profile-bar .p-meta { text-align: left; }
+        #profile-bar .p-name { font-weight: 700; color: var(--accent); font-size: 1.05rem; }
+        #profile-bar .p-sub { font-size: 0.75rem; color: #5a716b; }
+        #profile-bar .p-actions button {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            border-radius: 999px;
+            border: 1px solid #cfd8d6;
+            background: #fff;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        #duel-return-banner {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 10px 16px;
+            background: linear-gradient(90deg, #fff8e6, #e8f5e9);
+            border-bottom: 1px solid rgba(7, 94, 84, 0.15);
+            font-size: 0.9rem;
+            z-index: 95;
+        }
+        #duel-return-banner a {
+            color: var(--accent);
+            font-weight: 700;
+        }
+        #duel-return-banner button {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: none;
+            background: #78909c;
+            color: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+
+        #game-menu-fab {
+            display: none;
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 11;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            border: none;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: var(--shadow);
+            font-size: 1.35rem;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        .game-menu-wrap {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 10;
+        }
+        .game-menu-wrap.with-profile-offset { top: 76px; }
+        .game-menu-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 10px 8px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px 12px 0 0;
+            border: 1px solid rgba(7, 94, 84, 0.1);
+            border-bottom: none;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .game-menu-header button {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 8px;
+            background: #eceff1;
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            color: var(--accent);
+        }
+        .game-menu-wrap.collapsed { display: none; }
+
+        #profile-edit-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 210;
+            background: rgba(0, 0, 0, 0.45);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #profile-edit-overlay.open { display: flex; }
+        .profile-edit-card {
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 16px;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+        }
+        .profile-edit-card h3 { margin: 0 0 12px; color: var(--accent); }
+        .profile-edit-card input { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 12px; font-family: inherit; }
+        .profile-edit-card .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
     </style>
 </head>
 <body>
@@ -571,12 +701,39 @@
 
     <div id="sticker-display"></div>
 
+    <button type="button" id="game-menu-fab" onclick="toggleGameMenuMin()" title="Mostrar menú de juego">🎮</button>
     <button id="chat-toggle" onclick="toggleChat()">💬 Abrir Chat</button>
+
+    <div id="duel-return-banner" role="region" aria-label="Volver a sala">
+        <span id="duel-return-text"></span>
+        <a id="duel-return-link" href="#">Volver a la sala</a>
+        <button type="button" onclick="dismissDuelBanner()">Ocultar</button>
+    </div>
+
+    <div id="profile-edit-overlay" onclick="if(event.target===this)closeProfileEdit()">
+        <div class="profile-edit-card" onclick="event.stopPropagation()">
+            <h3>Tu perfil</h3>
+            <label for="editProfileName">Nombre</label>
+            <input type="text" id="editProfileName" maxlength="32" autocomplete="username">
+            <div>Avatar</div>
+            <div class="row" id="editAvatarRow"></div>
+            <div class="row">
+                <button type="button" class="btn-primary" onclick="saveProfileEdit()">Guardar</button>
+                <button type="button" onclick="closeProfileEdit()" style="padding:10px 16px;border-radius:10px;border:1px solid #ccc;background:#fff;cursor:pointer;">Cancelar</button>
+            </div>
+            <p style="font-size:0.75rem;color:#666;margin:12px 0 0;">Si cambias el nombre, se recargará la página para reconectar con el servidor.</p>
+        </div>
+    </div>
     
     <div id="main-wrapper">
-        <div id="game-menu">
-            <button onclick="socket.emit('change game', 'tictactoe')">⭕ Tres en Raya</button>
-            <button onclick="socket.emit('change game', 'minigolf')">⛳ Minigolf</button>
+        <div class="game-menu-wrap" id="gameMenuWrap">
+            <div class="game-menu-header">
+                <span>Modo de juego</span>
+                <button type="button" onclick="toggleGameMenuMin()" title="Minimizar">−</button>
+            </div>
+            <div id="game-menu">
+            <button type="button" onclick="socket.emit('change game', 'tictactoe')">⭕ Tres en Raya</button>
+            <button type="button" onclick="socket.emit('change game', 'minigolf')">⛳ Minigolf</button>
             <div class="game-menu-extra">
                 <label for="inviteGameType">Modo al invitar</label>
                 <select id="inviteGameType">
@@ -585,9 +742,20 @@
                 </select>
             </div>
             <button type="button" class="btn-menu-secondary" onclick="createDuelRoomOnly()">Crear sala con enlace</button>
+            </div>
         </div>
 
         <div id="game-area">
+            <div id="profile-bar" aria-label="Tu perfil">
+                <span class="p-avatar" id="profileBarAvatar">👤</span>
+                <div class="p-meta">
+                    <div class="p-name" id="profileBarName">—</div>
+                    <div class="p-sub">Tu perfil en esta sesión</div>
+                </div>
+                <div class="p-actions">
+                    <button type="button" onclick="openProfileEdit()">Editar perfil</button>
+                </div>
+            </div>
             <div style="position:relative;">
                 <div id="turn-hand" class="my-turn-indicator" style="display:none;">👆</div>
                 <h2 id="game-title">Juego Online</h2>
@@ -674,13 +842,207 @@
         let selectedPrivatePartner = null;
         const globalMessagesCache = [];
         const lastOnlineNames = new Set();
+        const LS_PREFS = 'chatSidebarPrefs';
+        const LS_PRIVATE_CACHE = 'privateChatsCache_v1';
+        const LS_ACTIVE_DUEL = 'activeDuelRoom';
+        let lastPrivateTarget = null;
+        let sidebarRestoreDone = false;
 
-        window.onload = () => {
-            if (currentUser.name) {
-                document.getElementById('login-overlay').style.display = 'none';
+        function loadPrivateCacheAll() {
+            try {
+                return JSON.parse(localStorage.getItem(LS_PRIVATE_CACHE)) || {};
+            } catch (e) {
+                return {};
+            }
+        }
+        function savePrivateCacheAll(obj) {
+            try {
+                localStorage.setItem(LS_PRIVATE_CACHE, JSON.stringify(obj));
+            } catch (e) {}
+        }
+        function getPrivateCacheThread(partner) {
+            const all = loadPrivateCacheAll();
+            return Array.isArray(all[partner]) ? all[partner] : [];
+        }
+        function mergeMsgsIntoCache(partner, msgs) {
+            if (!partner || !msgs || !msgs.length) return;
+            const all = loadPrivateCacheAll();
+            const cur = getPrivateCacheThread(partner);
+            const seen = new Set(cur.map((m) => m.from + '|' + m.time + '|' + m.message));
+            msgs.forEach((m) => {
+                const k = m.from + '|' + m.time + '|' + m.message;
+                if (!seen.has(k)) {
+                    seen.add(k);
+                    cur.push(m);
+                }
+            });
+            cur.sort((a, b) => (a.time || 0) - (b.time || 0));
+            if (cur.length > 400) cur.splice(0, cur.length - 400);
+            all[partner] = cur;
+            savePrivateCacheAll(all);
+        }
+        function saveSidebarPrefs() {
+            try {
+                localStorage.setItem(
+                    LS_PREFS,
+                    JSON.stringify({ tab: chatMode, partner: selectedPrivatePartner })
+                );
+            } catch (e) {}
+        }
+        function loadSidebarPrefs() {
+            try {
+                return JSON.parse(localStorage.getItem(LS_PREFS)) || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function refreshProfileBar() {
+            const bar = document.getElementById('profile-bar');
+            const gmw = document.getElementById('gameMenuWrap');
+            if (!bar) return;
+            if (!currentUser.name) {
+                bar.classList.remove('visible');
+                if (gmw) gmw.classList.remove('with-profile-offset');
+                return;
+            }
+            bar.classList.add('visible');
+            if (gmw) gmw.classList.add('with-profile-offset');
+            document.getElementById('profileBarAvatar').textContent = currentUser.avatar || '👤';
+            document.getElementById('profileBarName').textContent = currentUser.name;
+        }
+
+        function showDuelReturnBanner() {
+            const banner = document.getElementById('duel-return-banner');
+            const link = document.getElementById('duel-return-link');
+            const txt = document.getElementById('duel-return-text');
+            let code = '';
+            let label = '';
+            try {
+                const d = JSON.parse(localStorage.getItem(LS_ACTIVE_DUEL) || 'null');
+                if (d && d.code) {
+                    code = d.code;
+                    label = d.label || 'Sala privada';
+                }
+            } catch (e) {}
+            if (!code) {
+                const legacy = (localStorage.getItem('duelPendingRoom') || '').trim();
+                if (legacy) {
+                    code = legacy.toLowerCase();
+                    label = 'Sala (última invitación)';
+                }
+            }
+            if (!code) {
+                banner.style.display = 'none';
+                return;
+            }
+            txt.textContent = 'Tienes una partida en curso: ' + label + '. ';
+            link.href = window.location.origin + '/sala.html?c=' + encodeURIComponent(code);
+            banner.style.display = 'flex';
+        }
+
+        function dismissDuelBanner() {
+            document.getElementById('duel-return-banner').style.display = 'none';
+            try {
+                localStorage.removeItem(LS_ACTIVE_DUEL);
+                localStorage.removeItem('duelPendingRoom');
+            } catch (e) {}
+        }
+
+        function applyGameMenuCollapsed() {
+            const wrap = document.getElementById('gameMenuWrap');
+            const fab = document.getElementById('game-menu-fab');
+            if (!wrap || !fab) return;
+            if (localStorage.getItem('gameMenuCollapsed') === '1') {
+                wrap.classList.add('collapsed');
+                fab.style.display = 'flex';
+            } else {
+                wrap.classList.remove('collapsed');
+                fab.style.display = 'none';
+            }
+        }
+
+        function toggleGameMenuMin() {
+            const wrap = document.getElementById('gameMenuWrap');
+            const fab = document.getElementById('game-menu-fab');
+            const collapsed = !wrap.classList.contains('collapsed');
+            wrap.classList.toggle('collapsed', collapsed);
+            fab.style.display = collapsed ? 'flex' : 'none';
+            localStorage.setItem('gameMenuCollapsed', collapsed ? '1' : '0');
+        }
+
+        function openProfileEdit() {
+            document.getElementById('editProfileName').value = currentUser.name || '';
+            const row = document.getElementById('editAvatarRow');
+            row.innerHTML = '';
+            const icons = ['🐱', '🐶', '🦊', '🐸', '🐰', '🦁', '🐻', '🐼'];
+            icons.forEach((ic) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = ic;
+                b.style.cssText = 'font-size:1.5rem;padding:8px;border-radius:10px;border:2px solid #eee;background:#fff;cursor:pointer';
+                if (ic === (currentUser.avatar || '🐱')) b.style.borderColor = 'var(--green)';
+                b.onclick = () => {
+                    currentUser.avatar = ic;
+                    row.querySelectorAll('button').forEach((x) => (x.style.borderColor = '#eee'));
+                    b.style.borderColor = 'var(--green)';
+                };
+                row.appendChild(b);
+            });
+            document.getElementById('profile-edit-overlay').classList.add('open');
+        }
+        function closeProfileEdit() {
+            document.getElementById('profile-edit-overlay').classList.remove('open');
+        }
+        function saveProfileEdit() {
+            const n = document.getElementById('editProfileName').value.trim();
+            if (!n) return alert('El nombre no puede estar vacío');
+            const nameChanged = n !== currentUser.name;
+            currentUser.name = n;
+            localStorage.setItem('chatProfile', JSON.stringify(currentUser));
+            closeProfileEdit();
+            refreshProfileBar();
+            if (nameChanged) {
+                location.reload();
+            } else if (socket && socket.connected) {
                 socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
             }
-            showChat('global', true);
+        }
+
+        function tryRestoreSidebar() {
+            if (sidebarRestoreDone || !currentUser.name) return;
+            sidebarRestoreDone = true;
+            const prefs = loadSidebarPrefs();
+            if (!prefs || prefs.tab === 'global') {
+                showChat('global', true);
+                return;
+            }
+            if (prefs.tab === 'friends' && prefs.partner) {
+                showChat('friends', true);
+                openPrivateSidebarChat(prefs.partner);
+            } else if (prefs.tab === 'friends') {
+                showChat('friends', true);
+            } else {
+                showChat('global', true);
+            }
+        }
+
+        window.onload = () => {
+            applyGameMenuCollapsed();
+            showDuelReturnBanner();
+            document.querySelectorAll('#avatarPicker .avatar-option').forEach((el) => {
+                if ((el.textContent || '').trim() === (currentUser.avatar || '🐱')) el.classList.add('selected');
+            });
+            if (currentUser.name) {
+                document.getElementById('login-overlay').style.display = 'none';
+                refreshProfileBar();
+                socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
+            }
+            if (!currentUser.name) {
+                showChat('global', true);
+            } else if (socket && socket.connected) {
+                tryRestoreSidebar();
+            }
         };
 
         function doLogin() {
@@ -689,7 +1051,9 @@
             currentUser.name = name;
             localStorage.setItem('chatProfile', JSON.stringify(currentUser));
             document.getElementById('login-overlay').style.display = 'none';
+            refreshProfileBar();
             socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
+            tryRestoreSidebar();
         }
 
         function escapeHtml(s) {
@@ -749,6 +1113,7 @@
                 }
             }
             if (!silent) input.focus();
+            saveSidebarPrefs();
         }
 
         function backToFriendsList() {
@@ -757,6 +1122,7 @@
             document.getElementById('friendsChatView').style.display = 'none';
             document.getElementById('friendsChatContainer').innerHTML = '';
             showChat('friends', true);
+            saveSidebarPrefs();
         }
 
         function openPrivateSidebarChat(userName) {
@@ -767,7 +1133,12 @@
             document.getElementById('friendsChatView').style.display = 'flex';
             document.getElementById('friendsChatTitle').textContent = userName;
             document.getElementById('messageInput').placeholder = 'Mensaje privado para ' + userName + '…';
+            const cached = getPrivateCacheThread(userName);
+            friendsChatContainer.innerHTML = '';
+            cached.forEach((m) => appendPrivateBubble(m));
+            friendsChatContainer.scrollTop = friendsChatContainer.scrollHeight;
             socket.emit('get private history', userName);
+            saveSidebarPrefs();
         }
 
         function renderFriendsList() {
@@ -855,15 +1226,21 @@
 
         socket.on('load private history', (msgs) => {
             if (chatMode !== 'friends' || !selectedPrivatePartner || !friendsChatContainer) return;
+            mergeMsgsIntoCache(selectedPrivatePartner, msgs || []);
             friendsChatContainer.innerHTML = '';
-            (msgs || []).forEach((m) => appendPrivateBubble(m));
+            getPrivateCacheThread(selectedPrivatePartner).forEach((m) => appendPrivateBubble(m));
             friendsChatContainer.scrollTop = friendsChatContainer.scrollHeight;
         });
 
         socket.on('private message', (msg) => {
-            if (chatMode !== 'friends' || !selectedPrivatePartner || !msg) return;
-            const other = selectedPrivatePartner;
-            if (msg.from !== other && msg.from !== currentUser.name) return;
+            if (!msg) return;
+            let partner = null;
+            if (msg.from !== currentUser.name) partner = msg.from;
+            else if (lastPrivateTarget) partner = lastPrivateTarget;
+            if (partner) mergeMsgsIntoCache(partner, [msg]);
+            if (chatMode !== 'friends' || !selectedPrivatePartner) return;
+            if (partner !== selectedPrivatePartner) return;
+            if (msg.from !== selectedPrivatePartner && msg.from !== currentUser.name) return;
             appendPrivateBubble(msg);
             friendsChatContainer.scrollTop = friendsChatContainer.scrollHeight;
         });
@@ -919,6 +1296,11 @@
             }, (res) => {
                 if (!res || !res.ok) return alert('No se pudo crear la sala');
                 localStorage.setItem('duelPendingRoom', res.code);
+                localStorage.setItem(LS_ACTIVE_DUEL, JSON.stringify({
+                    code: res.code,
+                    label: 'Tu sala privada',
+                    hostUsername: currentUser.name
+                }));
                 window.location.href = `${window.location.origin}/sala.html?c=${res.code}`;
             });
         }
@@ -934,6 +1316,11 @@
             }, (res) => {
                 if (!res || !res.ok) return alert('No se pudo crear la sala');
                 localStorage.setItem('duelPendingRoom', res.code);
+                localStorage.setItem(LS_ACTIVE_DUEL, JSON.stringify({
+                    code: res.code,
+                    label: 'Sala con invitado',
+                    hostUsername: currentUser.name
+                }));
                 window.location.href = `${window.location.origin}/sala.html?c=${res.code}`;
             });
         }
@@ -943,6 +1330,11 @@
             const label = data.gameType === 'minigolf' ? 'Minigolf' : 'Tres en raya';
             if (confirm(`${data.hostUsername} te invita a una sala privada (${label}). ¿Entrar ahora?`)) {
                 localStorage.setItem('duelPendingRoom', data.code);
+                localStorage.setItem(LS_ACTIVE_DUEL, JSON.stringify({
+                    code: data.code,
+                    label: 'Con ' + data.hostUsername,
+                    hostUsername: data.hostUsername
+                }));
                 window.location.href = url;
             }
         });
@@ -954,7 +1346,11 @@
         });
 
         if (socket) {
-            socket.on('connect', () => { statusDiv.textContent = 'Conectado'; statusDiv.style.color = '#25d366'; });
+            socket.on('connect', () => {
+                statusDiv.textContent = 'Conectado';
+                statusDiv.style.color = '#25d366';
+                tryRestoreSidebar();
+            });
             socket.on('disconnect', () => { statusDiv.textContent = 'Desconectado'; statusDiv.style.color = '#ff5252'; });
         }
 
@@ -1059,6 +1455,7 @@
                     alert('Abre un chat privado: elige un amigo en la lista o pulsa un nombre en “En línea”.');
                     return;
                 }
+                lastPrivateTarget = selectedPrivatePartner;
                 socket.emit('private message', { to: selectedPrivatePartner, message });
             }
             input.value = '';
