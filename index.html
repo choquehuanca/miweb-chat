@@ -159,6 +159,7 @@
         }
         .message-content { display: flex; align-items: center; gap: 8px; }
         .msg-avatar { font-size: 1.2rem; }
+        .private-chat-label { background: #075e54; color: white; padding: 2px 5px; border-radius: 4px; font-size: 0.7rem; }
         
         /* Stickers Pop */
         #sticker-display {
@@ -229,6 +230,16 @@
             border-radius: 20px;
             cursor: pointer;
         }
+        /* Guía y Turno */
+        .my-turn-indicator {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce { 0%, 100% { top: -40px; } 50% { top: -50px; } }
     </style>
 </head>
 <body>
@@ -247,6 +258,18 @@
         </div>
     </div>
 
+    <div id="private-chat-window" style="display:none; position:fixed; right:360px; bottom:20px; width:300px; height:400px; background:white; z-index:500; box-shadow:0 0 10px rgba(0,0,0,0.5); border-radius:10px; flex-direction:column;">
+        <div class="header" style="display:flex; justify-content:space-between;">
+            <span id="private-with">Chat Privado</span>
+            <button onclick="closePrivateChat()" style="background:none; border:none; color:white; cursor:pointer;">✖</button>
+        </div>
+        <div id="privateMessagesContainer" style="flex:1; overflow-y:auto; padding:10px;"></div>
+        <div class="input-container">
+            <input type="text" id="privateInput" placeholder="Mensaje privado...">
+            <button onclick="sendPrivateMessage()">➡</button>
+        </div>
+    </div>
+
     <div id="sticker-display"></div>
 
     <button id="chat-toggle" onclick="toggleChat()">💬 Abrir Chat</button>
@@ -258,8 +281,11 @@
         </div>
 
         <div id="game-area">
-            <h2 id="game-title">Juego Online</h2>
-            <div id="game-info" style="margin-bottom: 20px;">Esperando jugadores...</div>
+            <div style="position:relative;">
+                <div id="turn-hand" class="my-turn-indicator" style="display:none;">👆</div>
+                <h2 id="game-title">Juego Online</h2>
+                <div id="game-info" style="margin-bottom: 20px;">Esperando jugadores...</div>
+            </div>
             
             <div id="tictactoe-ui" class="board">
                 <div class="cell" data-index="0" onclick="makeMove(0)"></div>
@@ -273,9 +299,9 @@
                 <div class="cell" data-index="8" onclick="makeMove(8)"></div>
             </div>
 
-            <div id="minigolf-ui" style="display:none; text-align: center;">
+            <div id="minigolf-ui" style="display:none; text-align: center; position:relative;">
                 <canvas id="golf-canvas" width="500" height="400"></canvas>
-                <p>Haz clic para lanzar la bola hacia el agujero blanco.</p>
+                <p>Arrastra desde la bola roja para apuntar y suelta para lanzar.</p>
             </div>
 
             <div style="margin-top: 10px;">
@@ -283,6 +309,11 @@
                 <button onclick="sendSticker('🔥')">🔥</button>
                 <button onclick="sendSticker('💩')">💩</button>
                 <button onclick="sendSticker('🤡')">🤡</button>
+            </div>
+
+            <div style="margin-top: 5px;">
+                <input type="text" id="friendNameInput" placeholder="Nombre del amigo...">
+                <button onclick="socket.emit('add friend', document.getElementById('friendNameInput').value)">Añadir Amigo</button>
             </div>
 
             <button onclick="socket.emit('reset game')" id="btnReset" style="display:none; margin-top:20px; padding:10px;">Reiniciar Juego</button>
@@ -297,6 +328,10 @@
             <div class="online-list" id="onlineUsers">
                 <strong>Usuarios en línea:</strong>
             </div>
+            <div style="display:flex; border-bottom:1px solid #ddd;">
+                <button onclick="showChat('global')" style="flex:1; padding:5px;">Global</button>
+                <button onclick="showChat('friends')" style="flex:1; padding:5px;">Amigos</button>
+            </div>
             <div class="chat-container" id="chatContainer"></div>
             <div class="input-container">
                 <input type="text" id="messageInput" placeholder="Mensaje...">
@@ -308,7 +343,33 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = typeof io !== 'undefined' ? io() : null;
-        let currentUser = { name: '', avatar: '🐱' };
+        let currentUser = JSON.parse(localStorage.getItem('chatProfile')) || { name: '', avatar: '🐱' };
+        let activePrivateUser = null;
+
+        window.onload = () => {
+            if (currentUser.name) {
+                document.getElementById('login-overlay').style.display = 'none';
+                socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
+            }
+        };
+
+        function doLogin() {
+            const name = document.getElementById('loginName').value.trim();
+            if (!name) return alert("Escribe un nombre");
+            currentUser.name = name;
+            localStorage.setItem('chatProfile', JSON.stringify(currentUser));
+            document.getElementById('login-overlay').style.display = 'none';
+            socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
+        }
+
+        function openPrivateChat(userName) {
+            activePrivateUser = userName;
+            document.getElementById('private-chat-window').style.display = 'flex';
+            document.getElementById('private-with').textContent = 'Chat con ' + userName;
+            document.getElementById('privateMessagesContainer').innerHTML = '';
+            socket.emit('get private history', userName);
+        }
+        function closePrivateChat() { document.getElementById('private-chat-window').style.display = 'none'; activePrivateUser = null; }
 
         function selectAvatar(el, icon) {
             document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
@@ -333,8 +394,10 @@
             users.forEach(u => {
                 if(u.id === socket.id) return;
                 list.innerHTML += `<div class="user-item">
-                    <span>${u.avatar} ${u.username}</span>
-                    <button onclick="invite('${u.id}')">Invitar</button>
+                    <span onclick="openPrivateChat('${u.username}')" style="cursor:pointer;">${u.avatar} ${u.username}</span>
+                    <div>
+                        <button onclick="invite('${u.id}')">Invitar</button>
+                    </div>
                 </div>`;
             });
         });

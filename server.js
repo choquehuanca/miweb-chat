@@ -10,6 +10,8 @@ const io = socketIo(server);
 
 const messagesFile = path.join(__dirname, 'messages.json');
 const statsFile = path.join(__dirname, 'stats.json');
+const usersFile = path.join(__dirname, 'users.json');
+const privateMessagesFile = path.join(__dirname, 'private_messages.json');
 
 // Estado del juego
 let players = [];
@@ -21,7 +23,11 @@ let gameActive = true;
 let winnerInfo = null;
 
 // Estado Minigolf
-let golfState = { ballX: 50, ballY: 250, holeX: 450, holeY: 250, strokes: { X: 0, O: 0 } };
+let golfState = { 
+  ballX: 50, ballY: 200, holeX: 450, holeY: 200, 
+  scores: { X: 0, O: 0 },
+  obstacles: [{x: 200, y: 100, w: 20, h: 200}] 
+};
 
 // Cargar mensajes del archivo
 let messages = [];
@@ -41,6 +47,18 @@ if (fs.existsSync(statsFile)) {
   } catch (err) { console.error('Error al cargar estadísticas:', err); }
 }
 
+// Cargar Usuarios Persistentes
+let persistentUsers = {};
+if (fs.existsSync(usersFile)) {
+  try { persistentUsers = JSON.parse(fs.readFileSync(usersFile, 'utf8')); } catch (e) {}
+}
+
+// Cargar Mensajes Privados
+let privateMessages = {};
+if (fs.existsSync(privateMessagesFile)) {
+  try { privateMessages = JSON.parse(fs.readFileSync(privateMessagesFile, 'utf8')); } catch (e) {}
+}
+
 const checkWinner = (b) => {
   const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
   for (let i = 0; i < lines.length; i++) {
@@ -54,6 +72,14 @@ const saveStats = async () => {
   try {
     await fs.promises.writeFile(statsFile, JSON.stringify(stats, null, 2));
   } catch (err) { console.error('Error al guardar estadísticas:', err); }
+};
+
+const saveUsers = async () => {
+  try { await fs.promises.writeFile(usersFile, JSON.stringify(persistentUsers, null, 2)); } catch (e) {}
+};
+
+const savePrivateMessages = async () => {
+  try { await fs.promises.writeFile(privateMessagesFile, JSON.stringify(privateMessages, null, 2)); } catch (e) {}
 };
 
 app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz del proyecto
@@ -75,7 +101,13 @@ io.on('connection', (socket) => {
   console.log('Un usuario se conectó');
 
   socket.on('join game', (userData) => {
-    onlineUsers[socket.id] = { username: userData.username, avatar: userData.avatar, id: socket.id };
+    const userId = userData.username;
+    if (!persistentUsers[userId]) {
+      persistentUsers[userId] = { username: userId, avatar: userData.avatar, friends: [] };
+      saveUsers();
+    }
+    
+    onlineUsers[socket.id] = { ...persistentUsers[userId], id: socket.id };
     io.emit('update user list', Object.values(onlineUsers));
     
     if (players.length < 2) {
@@ -84,6 +116,39 @@ io.on('connection', (socket) => {
       socket.emit('player assigned', players[players.length - 1].symbol);
     }
     io.emit('game update', { board, xIsNext, players, winnerInfo, stats, activeGameType, golfState });
+  });
+
+  socket.on('add friend', (friendName) => {
+    const currentUser = onlineUsers[socket.id];
+    if (currentUser && persistentUsers[friendName] && friendName !== currentUser.username) {
+      if (!persistentUsers[currentUser.username].friends.includes(friendName)) {
+        persistentUsers[currentUser.username].friends.push(friendName);
+        saveUsers();
+        socket.emit('update user list', Object.values(onlineUsers));
+      }
+    }
+  });
+
+  socket.on('private message', ({ to, message }) => {
+    const from = onlineUsers[socket.id]?.username;
+    if (!from) return;
+    const chatId = [from, to].sort().join(':');
+    if (!privateMessages[chatId]) privateMessages[chatId] = [];
+    const msgData = { from, message, time: Date.now() };
+    privateMessages[chatId].push(msgData);
+    savePrivateMessages();
+    
+    // Enviar a ambos si están conectados
+    const targetSocket = Object.values(onlineUsers).find(u => u.username === to);
+    if (targetSocket) io.to(targetSocket.id).emit('private message', msgData);
+    socket.emit('private message', msgData);
+  });
+
+  socket.on('get private history', (otherUser) => {
+    const from = onlineUsers[socket.id]?.username;
+    if (!from) return;
+    const chatId = [from, otherUser].sort().join(':');
+    socket.emit('load private history', privateMessages[chatId] || []);
   });
 
   // Gestión de Invitaciones y Menú

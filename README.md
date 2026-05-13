@@ -10,7 +10,7 @@ Esta es una aplicación de chat en tiempo real donde todos los usuarios conectad
 2. Abre una terminal en la carpeta del proyecto (`c:\Users\lenos\OneDrive\Escritorio\miweb`).
 3. Ejecuta `npm install` para instalar las dependencias.
 4. Ejecuta `npm start` para iniciar el servidor.
-5. Abre `http://localhost:3000/` en varios navegadores para probar el chat global.
+5. Abre la URL proporcionada por Render o `http://localhost:3000/` localmente.
 
 ## Funcionalidades
 - Ingresa tu nombre en el campo superior.
