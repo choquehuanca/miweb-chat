@@ -24,7 +24,15 @@ app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz
 
 // Asegurar que al entrar a la raíz se cargue index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  const indexPath = path.join(__dirname, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error('ERROR: No se pudo enviar index.html:', err.message);
+      res.status(500).send('Error interno: El servidor no encuentra el archivo index.html');
+    } else {
+      console.log('Archivo index.html enviado correctamente');
+    }
+  });
 });
 
 io.on('connection', (socket) => {

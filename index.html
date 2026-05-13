@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat como WhatsApp</title>
-    <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -71,7 +70,7 @@
         .input-container button:hover {
             background-color: #128c7e;
         }
-    </script>
+    </style>
 </head>
 <body>
     <div class="header">
@@ -87,6 +86,8 @@
         <button onclick="sendMessage()">Enviar</button>
     </div>
 
+    <!-- Movido al final para evitar bloqueo de carga -->
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         // 1. Verificación de seguridad: ¿Se abrió como archivo local?
         if (window.location.protocol === 'file:') {
