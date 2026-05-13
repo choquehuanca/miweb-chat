@@ -82,6 +82,97 @@ const savePrivateMessages = async () => {
   try { await fs.promises.writeFile(privateMessagesFile, JSON.stringify(privateMessages, null, 2)); } catch (e) {}
 };
 
+// Salas de duelo (invitación → sala privada; persistencia en disco)
+const roomsFile = path.join(__dirname, 'rooms.json');
+let duelRooms = {};
+if (fs.existsSync(roomsFile)) {
+  try {
+    duelRooms = JSON.parse(fs.readFileSync(roomsFile, 'utf8'));
+    Object.values(duelRooms).forEach((r) => {
+      if (!r.messages) r.messages = [];
+      if (!r.golfState || !r.golfState.scores) {
+        r.golfState = {
+          ballX: 50,
+          ballY: 200,
+          holeX: 450,
+          holeY: 200,
+          scores: { X: 0, O: 0, winner: null },
+          obstacles: [{ x: 200, y: 100, w: 20, h: 200 }]
+        };
+      }
+    });
+  } catch (e) {
+    console.error('Error al cargar rooms.json:', e);
+  }
+}
+const saveDuelRooms = async () => {
+  try {
+    await fs.promises.writeFile(roomsFile, JSON.stringify(duelRooms, null, 2));
+  } catch (e) {
+    console.error('Error al guardar rooms.json:', e);
+  }
+};
+
+const socketDuelById = {}; // socket.id -> { code, username }
+
+function generateRoomCode() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function newRoomState(code, host, gameType) {
+  return {
+    code,
+    createdAt: Date.now(),
+    host: { username: host.username, avatar: host.avatar || '🐱' },
+    guest: null,
+    activeGameType: gameType === 'minigolf' ? 'minigolf' : 'tictactoe',
+    board: Array(9).fill(null),
+    xIsNext: true,
+    gameActive: true,
+    winnerInfo: null,
+    golfState: {
+      ballX: 50,
+      ballY: 200,
+      holeX: 450,
+      holeY: 200,
+      scores: { X: 0, O: 0, winner: null },
+      obstacles: [{ x: 200, y: 100, w: 20, h: 200 }]
+    },
+    messages: []
+  };
+}
+
+function duelRoomPayload(r) {
+  if (!r) return null;
+  return {
+    code: r.code,
+    host: r.host,
+    guest: r.guest,
+    activeGameType: r.activeGameType,
+    board: r.board,
+    xIsNext: r.xIsNext,
+    gameActive: r.gameActive,
+    winnerInfo: r.winnerInfo,
+    golfState: r.golfState,
+    messages: (r.messages || []).slice(-150)
+  };
+}
+
+function duelSymbolForUser(room, username) {
+  if (room.host.username === username) return 'X';
+  if (room.guest && room.guest.username === username) return 'O';
+  return null;
+}
+
+function emitDuelRoomState(code) {
+  const r = duelRooms[code];
+  if (!r) return;
+  io.to(code).emit('duel:state', duelRoomPayload(r));
+}
+
 app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz del proyecto
 
 // Asegurar que al entrar a la raíz se cargue index.html
@@ -95,6 +186,12 @@ app.get('/', (req, res) => {
       console.log('Archivo index.html enviado correctamente');
     }
   });
+});
+
+app.get('/sala', (req, res) => {
+  const c = (req.query.c || req.query.room || '').toString().trim();
+  if (c) res.redirect(302, `/sala.html?c=${encodeURIComponent(c.toLowerCase())}`);
+  else res.redirect(302, '/sala.html');
 });
 
 io.on('connection', (socket) => {
@@ -149,6 +246,162 @@ io.on('connection', (socket) => {
     if (!from) return;
     const chatId = [from, otherUser].sort().join(':');
     socket.emit('load private history', privateMessages[chatId] || []);
+  });
+
+  // --- Salas privadas (sala.html): invitación, nombres persistentes en rooms.json ---
+  socket.on('duel:create', (data, ack) => {
+    const reply = (payload) => {
+      if (typeof ack === 'function') ack(payload);
+    };
+    const hostUsername = (data && data.hostUsername && String(data.hostUsername).trim()) || '';
+    if (!hostUsername) return reply({ ok: false, error: 'no_host' });
+    let code = generateRoomCode();
+    while (duelRooms[code]) code = generateRoomCode();
+    const host = { username: hostUsername, avatar: (data && data.hostAvatar) || '🐱' };
+    const gameType = data && data.gameType === 'minigolf' ? 'minigolf' : 'tictactoe';
+    duelRooms[code] = newRoomState(code, host, gameType);
+    saveDuelRooms();
+    if (data && data.inviteeSocketId) {
+      io.to(data.inviteeSocketId).emit('duel:invite', {
+        code,
+        hostUsername: host.username,
+        hostAvatar: host.avatar,
+        gameType: duelRooms[code].activeGameType
+      });
+    }
+    reply({ ok: true, code });
+  });
+
+  socket.on('duel:join', (data, ack) => {
+    const reply = (payload) => {
+      if (typeof ack === 'function') ack(payload);
+    };
+    const rawCode = (data && data.code && String(data.code).trim().toLowerCase()) || '';
+    const username = (data && data.username && String(data.username).trim()) || '';
+    const avatar = (data && data.avatar) || '🐱';
+    if (!rawCode || !username) return reply({ ok: false, error: 'bad_request' });
+    const room = duelRooms[rawCode];
+    if (!room) return reply({ ok: false, error: 'no_room' });
+
+    if (room.host.username === username) {
+      room.host.avatar = avatar;
+    } else if (!room.guest) {
+      room.guest = { username, avatar };
+    } else if (room.guest.username !== username) {
+      return reply({ ok: false, error: 'room_full' });
+    } else {
+      room.guest.avatar = avatar;
+    }
+
+    socket.join(rawCode);
+    socketDuelById[socket.id] = { code: rawCode, username };
+    saveDuelRooms();
+    emitDuelRoomState(rawCode);
+    const role = room.host.username === username ? 'host' : 'guest';
+    reply({ ok: true, role, state: duelRoomPayload(room) });
+  });
+
+  socket.on('duel:chat', (payload) => {
+    const meta = socketDuelById[socket.id];
+    if (!meta || !payload || !payload.text) return;
+    const room = duelRooms[meta.code];
+    if (!room) return;
+    const text = String(payload.text).trim().slice(0, 2000);
+    if (!text) return;
+    if (!room.messages) room.messages = [];
+    room.messages.push({ from: meta.username, text, time: Date.now() });
+    if (room.messages.length > 300) room.messages.splice(0, room.messages.length - 300);
+    saveDuelRooms();
+    emitDuelRoomState(meta.code);
+  });
+
+  socket.on('duel:change_game', (type) => {
+    const meta = socketDuelById[socket.id];
+    if (!meta) return;
+    const room = duelRooms[meta.code];
+    if (!room || room.host.username !== meta.username) return;
+    room.activeGameType = type === 'minigolf' ? 'minigolf' : 'tictactoe';
+    saveDuelRooms();
+    emitDuelRoomState(meta.code);
+  });
+
+  socket.on('duel:move', (index) => {
+    const meta = socketDuelById[socket.id];
+    if (!meta) return;
+    const room = duelRooms[meta.code];
+    if (!room || !room.gameActive || room.activeGameType !== 'tictactoe') return;
+    const sym = duelSymbolForUser(room, meta.username);
+    if (!sym) return;
+    const isTurn = (sym === 'X' && room.xIsNext) || (sym === 'O' && !room.xIsNext);
+    if (!isTurn || room.board[index]) return;
+    room.board[index] = sym;
+    room.xIsNext = !room.xIsNext;
+    room.winnerInfo = checkWinner(room.board);
+    if (room.winnerInfo) {
+      room.gameActive = false;
+      if (room.winnerInfo.winner !== 'Draw') {
+        const winnerName =
+          room.winnerInfo.winner === 'X' ? room.host.username : room.guest && room.guest.username;
+        if (winnerName) {
+          stats[winnerName] = (stats[winnerName] || 0) + 1;
+          saveStats();
+        }
+      }
+    }
+    saveDuelRooms();
+    emitDuelRoomState(meta.code);
+  });
+
+  socket.on('duel:golf_move', (data) => {
+    const meta = socketDuelById[socket.id];
+    if (!meta || !data) return;
+    const room = duelRooms[meta.code];
+    if (!room || room.activeGameType !== 'minigolf') return;
+    const sym = duelSymbolForUser(room, meta.username);
+    if (!sym || !room.guest || room.golfState.scores.winner) return;
+    const isTurn = (sym === 'X' && room.xIsNext) || (sym === 'O' && !room.xIsNext);
+    if (!isTurn) return;
+    room.golfState.ballX = data.ballX;
+    room.golfState.ballY = data.ballY;
+    room.xIsNext = !room.xIsNext;
+    const dist = Math.hypot(room.golfState.ballX - room.golfState.holeX, room.golfState.ballY - room.golfState.holeY);
+    if (dist < 20) {
+      room.golfState.scores[sym]++;
+      room.golfState.ballX = 50;
+      room.golfState.ballY = 200;
+      if (room.golfState.scores[sym] >= 5) {
+        room.golfState.scores.winner = meta.username;
+      }
+    }
+    saveDuelRooms();
+    emitDuelRoomState(meta.code);
+  });
+
+  socket.on('duel:reset', () => {
+    const meta = socketDuelById[socket.id];
+    if (!meta) return;
+    const room = duelRooms[meta.code];
+    if (!room) return;
+    room.board = Array(9).fill(null);
+    room.golfState = {
+      ballX: 50,
+      ballY: 200,
+      holeX: 450,
+      holeY: 200,
+      scores: { X: 0, O: 0, winner: null },
+      obstacles: [{ x: 200, y: 100, w: 20, h: 200 }]
+    };
+    room.xIsNext = true;
+    room.gameActive = true;
+    room.winnerInfo = null;
+    saveDuelRooms();
+    emitDuelRoomState(meta.code);
+  });
+
+  socket.on('duel:sticker', (emoji) => {
+    const meta = socketDuelById[socket.id];
+    if (!meta || !emoji) return;
+    io.to(meta.code).emit('duel:sticker', { emoji, from: meta.username });
   });
 
   // Gestión de Invitaciones y Menú
@@ -235,10 +488,15 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Un usuario se desconectó');
+    if (socketDuelById[socket.id]) {
+      const d = socketDuelById[socket.id];
+      delete socketDuelById[socket.id];
+      io.to(d.code).emit('duel:peer_left', { username: d.username });
+    }
     delete onlineUsers[socket.id];
     players = players.filter(p => p.id !== socket.id);
     io.emit('update user list', Object.values(onlineUsers));
-    io.emit('game update', { board, xIsNext, players });
+    io.emit('game update', { board, xIsNext, players, winnerInfo, stats, activeGameType, golfState });
   });
 
   // Enviar mensajes históricos al nuevo usuario

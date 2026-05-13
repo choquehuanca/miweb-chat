@@ -278,6 +278,14 @@
         <div id="game-menu">
             <button onclick="socket.emit('change game', 'tictactoe')">⭕ Tres en Raya</button>
             <button onclick="socket.emit('change game', 'minigolf')">⛳ Minigolf</button>
+            <div style="margin-top:10px; font-size:0.8rem; max-width:220px;">
+                <label for="inviteGameType">Invitar a jugar:</label>
+                <select id="inviteGameType" style="width:100%; margin-top:4px;">
+                    <option value="tictactoe">Tres en raya</option>
+                    <option value="minigolf">Minigolf</option>
+                </select>
+            </div>
+            <button type="button" style="margin-top:8px; width:100%;" onclick="createDuelRoomOnly()">🔗 Crear sala (enlace)</button>
         </div>
 
         <div id="game-area">
@@ -315,6 +323,7 @@
                 <input type="text" id="friendNameInput" placeholder="Nombre del amigo...">
                 <button onclick="socket.emit('add friend', document.getElementById('friendNameInput').value)">Añadir Amigo</button>
             </div>
+            <p style="font-size:0.75rem; color:#555; max-width:320px; margin:8px 0 0;">Al invitar desde la lista te lleva a <strong>sala privada</strong>: ahí se ven ambos nombres, chat solo de esa sala y partidas aisladas. Recargar conserva nombres y mensajes.</p>
 
             <button onclick="socket.emit('reset game')" id="btnReset" style="display:none; margin-top:20px; padding:10px;">Reiniciar Juego</button>
             <div id="stats-display" style="margin-top:20px;"></div>
@@ -377,14 +386,6 @@
             currentUser.avatar = icon;
         }
 
-        function doLogin() {
-            const name = document.getElementById('loginName').value.trim();
-            if (!name) return alert("Escribe un nombre");
-            currentUser.name = name;
-            document.getElementById('login-overlay').style.display = 'none';
-            socket.emit('join game', { username: currentUser.name, avatar: currentUser.avatar });
-        }
-
         const chatContainer = document.getElementById('chatContainer');
         const statusDiv = document.getElementById('status');
 
@@ -402,7 +403,49 @@
             });
         });
 
-        function invite(id) { socket.emit('invite player', { toId: id, gameType: 'minigolf' }); }
+        function getInviteGameType() {
+            const sel = document.getElementById('inviteGameType');
+            return sel && sel.value ? sel.value : 'tictactoe';
+        }
+
+        function createDuelRoomOnly() {
+            if (!currentUser.name) return alert('Entra con tu nombre primero');
+            const gameType = getInviteGameType();
+            socket.emit('duel:create', {
+                hostUsername: currentUser.name,
+                hostAvatar: currentUser.avatar,
+                gameType
+            }, (res) => {
+                if (!res || !res.ok) return alert('No se pudo crear la sala');
+                localStorage.setItem('duelPendingRoom', res.code);
+                window.location.href = `${window.location.origin}/sala.html?c=${res.code}`;
+            });
+        }
+
+        function invite(id) {
+            if (!currentUser.name) return alert('Entra con tu nombre primero');
+            const gameType = getInviteGameType();
+            socket.emit('duel:create', {
+                hostUsername: currentUser.name,
+                hostAvatar: currentUser.avatar,
+                gameType,
+                inviteeSocketId: id
+            }, (res) => {
+                if (!res || !res.ok) return alert('No se pudo crear la sala');
+                localStorage.setItem('duelPendingRoom', res.code);
+                window.location.href = `${window.location.origin}/sala.html?c=${res.code}`;
+            });
+        }
+
+        socket.on('duel:invite', (data) => {
+            const url = `${window.location.origin}/sala.html?c=${data.code}`;
+            const label = data.gameType === 'minigolf' ? 'Minigolf' : 'Tres en raya';
+            if (confirm(`${data.hostUsername} te invita a una sala privada (${label}). ¿Entrar ahora?`)) {
+                localStorage.setItem('duelPendingRoom', data.code);
+                window.location.href = url;
+            }
+        });
+
         socket.on('receive invite', (data) => {
             if(confirm(`${data.from.username} te invita a jugar ${data.gameType}. ¿Aceptas?`)) {
                 socket.emit('accept invite', { hostId: data.from.id, gameType: data.gameType });

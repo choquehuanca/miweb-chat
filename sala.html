@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sala privada — Chat & Juegos</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(160deg, #0b3d2e 0%, #075e54 40%, #128c7e 100%);
+      min-height: 100vh;
+      color: #111;
+    }
+    .topbar {
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+    }
+    .topbar h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    .names {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .pill {
+      background: rgba(255,255,255,0.15);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+    .pill.host { border: 2px solid #ffd700; }
+    .pill.guest { border: 2px solid #7bed9f; }
+    .pill.waiting { opacity: 0.85; font-style: italic; }
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: #f0f2f5;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    .panel-head {
+      background: #075e54;
+      color: #fff;
+      padding: 10px 14px;
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+    .game-body { padding: 16px; text-align: center; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px; }
+    .toolbar button, .actions button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 20px;
+      background: #25d366;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .toolbar button.secondary { background: #546e7a; }
+    .board {
+      display: inline-grid;
+      grid-template-columns: repeat(3, 88px);
+      gap: 8px;
+      background: #075e54;
+      padding: 10px;
+      border-radius: 12px;
+    }
+    .cell {
+      width: 88px; height: 88px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .cell.winner { background: #25d366; color: #fff; }
+    #golf-canvas {
+      background: #2ecc71;
+      border: 4px solid #27ae60;
+      border-radius: 12px;
+      cursor: crosshair;
+      max-width: 100%;
+      height: auto;
+    }
+    .status { margin: 10px 0; min-height: 1.5em; font-weight: 600; color: #333; }
+    .chat-panel { display: flex; flex-direction: column; height: 520px; }
+    .chat-msgs {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      background: #fff;
+      font-size: 0.9rem;
+    }
+    .msg { margin-bottom: 10px; padding: 8px 10px; border-radius: 10px; background: #eceff1; }
+    .msg .who { font-weight: bold; font-size: 0.75rem; color: #075e54; margin-bottom: 4px; }
+    .msg .time { font-size: 0.7rem; color: #789; margin-top: 4px; }
+    .msg.me { background: #dcf8c6; align-self: flex-end; }
+    .chat-input {
+      display: flex;
+      padding: 10px;
+      gap: 8px;
+      background: #eee;
+    }
+    .chat-input input {
+      flex: 1;
+      border: none;
+      border-radius: 20px;
+      padding: 10px 14px;
+    }
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 94, 84, 0.96);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    #login-overlay input {
+      padding: 10px 14px;
+      border-radius: 20px;
+      border: none;
+      width: min(280px, 90vw);
+      margin: 10px 0;
+    }
+    #login-overlay button {
+      padding: 10px 24px;
+      border-radius: 20px;
+      border: none;
+      background: #25d366;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 60;
+    }
+    .toast.show { opacity: 1; }
+    .banner {
+      background: #fff3cd;
+      color: #664d03;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    #sticker-pop {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 6rem;
+      z-index: 40;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+    }
+    #sticker-pop.on { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="login-overlay">
+    <div>
+      <h2>Entra a la sala</h2>
+      <p style="max-width:320px;opacity:0.9">Tu nombre se guarda en este navegador y se sincroniza con el servidor para que no se pierda al recargar.</p>
+      <input type="text" id="loginName" placeholder="Tu nombre..." maxlength="32">
+      <div><button type="button" onclick="completeLogin()">Continuar</button></div>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <div>
+      <h1>Sala privada</h1>
+      <div class="names" id="namesRow">
+        <span class="pill host" id="hostPill">Anfitrión: —</span>
+        <span class="pill waiting" id="guestPill">Invitado: esperando…</span>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="secondary" onclick="copyInvite()">Copiar enlace</button>
+      <button type="button" class="secondary" onclick="goHome()">Volver al inicio</button>
+    </div>
+  </div>
+  <div id="peerBanner" class="banner" style="display:none;"></div>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="panel-head">Juego en esta sala</div>
+      <div class="game-body">
+        <div class="toolbar">
+          <button type="button" onclick="emitChangeGame('tictactoe')">⭕ Tres en raya</button>
+          <button type="button" onclick="emitChangeGame('minigolf')">⛳ Minigolf</button>
+          <span style="font-size:0.8rem;color:#555;align-self:center;">(solo el anfitrión cambia el modo)</span>
+        </div>
+        <div class="status" id="gameStatus">Conectando…</div>
+        <div id="ttt-wrap">
+          <div class="board" id="board"></div>
+        </div>
+        <div id="golf-wrap" style="display:none;">
+          <canvas id="golf-canvas" width="500" height="400"></canvas>
+          <p style="font-size:0.85rem;color:#444;">Pulsa cerca de la bola para mover (turnos alternos).</p>
+        </div>
+        <div class="toolbar" style="margin-top:12px;">
+          <button type="button" onclick="sendSticker('🎉')">🎉</button>
+          <button type="button" onclick="sendSticker('😂')">😂</button>
+          <button type="button" onclick="sendSticker('🔥')">🔥</button>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="socket.emit('duel:reset')">Reiniciar partida</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel chat-panel">
+      <div class="panel-head">Chat de la sala</div>
+      <div class="chat-msgs" id="chatMsgs"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Escribe un mensaje…" maxlength="500">
+        <button type="button" onclick="sendChat()">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sticker-pop"></div>
+  <div class="toast" id="toast"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    let roomCode = (params.get('c') || params.get('room') || '').trim().toLowerCase();
+    if (!roomCode) {
+      roomCode = (localStorage.getItem('duelPendingRoom') || '').trim().toLowerCase();
+    }
+    let profile = null;
+    try {
+      profile = JSON.parse(localStorage.getItem('chatProfile')) || { name: '', avatar: '🐱' };
+    } catch (e) {
+      profile = { name: '', avatar: '🐱' };
+    }
+
+    const socket = typeof io !== 'undefined' ? io() : null;
+    let myRole = null;
+    let mySymbol = null;
+    let lastState = null;
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    function goHome() {
+      window.location.href = '/';
+    }
+
+    function copyInvite() {
+      if (!roomCode) return toast('No hay código de sala');
+      const url = `${window.location.origin}/sala.html?c=${roomCode}`;
+      navigator.clipboard.writeText(url).then(() => toast('Enlace copiado')).catch(() => {
+        prompt('Copia este enlace:', url);
+      });
+    }
+
+    function buildBoard() {
+      const b = document.getElementById('board');
+      b.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const d = document.createElement('div');
+        d.className = 'cell';
+        d.dataset.i = i;
+        d.onclick = () => socket && socket.emit('duel:move', i);
+        b.appendChild(d);
+      }
+    }
+
+    function drawGolf(gs) {
+      const canvas = document.getElementById('golf-canvas');
+      if (!canvas || !gs) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(gs.holeX, gs.holeY, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e74c3c';
+      ctx.beginPath();
+      ctx.arc(gs.ballX, gs.ballY, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function updateNames(state) {
+      const hostPill = document.getElementById('hostPill');
+      const guestPill = document.getElementById('guestPill');
+      if (!state || !state.host) return;
+      hostPill.textContent = `Anfitrión (X): ${state.host.avatar || ''} ${state.host.username}`;
+      hostPill.className = 'pill host';
+      if (state.guest) {
+        guestPill.textContent = `Invitado (O): ${state.guest.avatar || ''} ${state.guest.username}`;
+        guestPill.className = 'pill guest';
+      } else {
+        guestPill.textContent = 'Invitado: comparte el enlace y que entre con su nombre';
+        guestPill.className = 'pill guest waiting';
+      }
+    }
+
+    function formatTime(t) {
+      try {
+        const d = new Date(t);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function renderChat(messages) {
+      const box = document.getElementById('chatMsgs');
+      box.innerHTML = '';
+      (messages || []).forEach((m) => {
+        const div = document.createElement('div');
+        const me = profile && m.from === profile.name;
+        div.className = 'msg' + (me ? ' me' : '');
+        div.innerHTML = `<div class="who">${m.from || '?'}</div><div>${escapeHtml(m.text)}</div><div class="time">${formatTime(m.time)}</div>`;
+        box.appendChild(div);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function applyState(state) {
+      if (!state) return;
+      lastState = state;
+      updateNames(state);
+      const ttt = document.getElementById('ttt-wrap');
+      const golf = document.getElementById('golf-wrap');
+      if (state.activeGameType === 'minigolf') {
+        ttt.style.display = 'none';
+        golf.style.display = 'block';
+        drawGolf(state.golfState);
+      } else {
+        ttt.style.display = 'block';
+        golf.style.display = 'none';
+        const cells = document.querySelectorAll('.cell');
+        state.board.forEach((v, i) => {
+          cells[i].textContent = v || '';
+          cells[i].classList.remove('winner');
+        });
+        if (state.winnerInfo && state.winnerInfo.line) {
+          state.winnerInfo.line.forEach((idx) => cells[idx] && cells[idx].classList.add('winner'));
+        }
+      }
+
+      const st = document.getElementById('gameStatus');
+      if (state.winnerInfo) {
+        if (state.winnerInfo.winner === 'Draw') st.textContent = 'Empate';
+        else {
+          const sym = state.winnerInfo.winner;
+          const name =
+            sym === 'X' ? state.host.username : state.guest && state.guest.username;
+          st.textContent = `Ganador: ${name || sym}`;
+        }
+      } else if (!state.guest) {
+        st.textContent = 'Esperando a que tu amigo entre con el enlace…';
+      } else {
+        const turn = state.xIsNext ? 'X' : 'O';
+        const turnName = turn === 'X' ? state.host.username : state.guest.username;
+        st.textContent = `Turno: ${turnName} (${turn})` + (mySymbol === turn ? ' — Tú' : '');
+      }
+
+      renderChat(state.messages);
+    }
+
+    function joinRoom() {
+      if (!socket || !roomCode || !profile.name) return;
+      socket.emit(
+        'duel:join',
+        { code: roomCode, username: profile.name, avatar: profile.avatar || '🐱' },
+        (res) => {
+          if (!res || !res.ok) {
+            alert(res && res.error === 'room_full' ? 'La sala ya está llena.' : 'No se pudo entrar a la sala (código inválido).');
+            goHome();
+            return;
+          }
+          myRole = res.role;
+          mySymbol = res.role === 'host' ? 'X' : 'O';
+          localStorage.setItem('duelPendingRoom', roomCode);
+          if (res.state) applyState(res.state);
+          toast('Sala lista');
+        }
+      );
+    }
+
+    function completeLogin() {
+      const n = document.getElementById('loginName').value.trim();
+      if (!n) return alert('Escribe un nombre');
+      profile.name = n;
+      localStorage.setItem('chatProfile', JSON.stringify(profile));
+      document.getElementById('login-overlay').style.display = 'none';
+      joinRoom();
+    }
+
+    function sendChat() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text || !socket) return;
+      socket.emit('duel:chat', { text });
+      input.value = '';
+    }
+
+    function emitChangeGame(type) {
+      if (!socket) return;
+      if (myRole !== 'host') return toast('Solo el anfitrión puede cambiar el juego');
+      socket.emit('duel:change_game', type);
+    }
+
+    function sendSticker(e) {
+      if (!socket) return;
+      socket.emit('duel:sticker', e);
+    }
+
+    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendChat();
+    });
+
+    document.getElementById('golf-canvas').addEventListener('click', (e) => {
+      if (!mySymbol || !lastState || lastState.activeGameType !== 'minigolf') return;
+      const canvas = e.target;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      socket.emit('duel:golf_move', { ballX: x, ballY: y });
+    });
+
+    window.addEventListener('load', () => {
+      buildBoard();
+      if (!roomCode) {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('gameStatus').textContent = 'No hay código de sala en la URL.';
+        toast('Abre un enlace de invitación o créalo desde el inicio');
+        return;
+      }
+      if (!socket) {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('gameStatus').textContent = 'Sin conexión';
+        return;
+      }
+      socket.on('connect', () => joinRoom());
+      socket.on('duel:state', (s) => applyState(s));
+      socket.on('duel:sticker', (data) => {
+        const pop = document.getElementById('sticker-pop');
+        pop.textContent = data.emoji;
+        pop.classList.add('on');
+        setTimeout(() => pop.classList.remove('on'), 1600);
+      });
+      socket.on('duel:peer_left', () => {
+        const b = document.getElementById('peerBanner');
+        b.style.display = 'block';
+        b.textContent = 'Tu compañero se desconectó. Puede volver con el mismo enlace; los nombres y el chat de la sala se conservan.';
+      });
+
+      if (!profile.name) {
+        document.getElementById('loginName').value = '';
+        document.getElementById('login-overlay').style.display = 'flex';
+        return;
+      }
+      document.getElementById('login-overlay').style.display = 'none';
+      if (socket.connected) joinRoom();
+    });
+  </script>
+</body>
+</html>
