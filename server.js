@@ -20,7 +20,12 @@ if (fs.existsSync(messagesFile)) {
   }
 }
 
-app.use(express.static('.')); // Servir archivos estáticos como chat.html
+app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz del proyecto
+
+// Asegurar que al entrar a la raíz se cargue index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 io.on('connection', (socket) => {
   console.log('Un usuario se conectó');
@@ -28,11 +33,15 @@ io.on('connection', (socket) => {
   // Enviar mensajes históricos al nuevo usuario
   socket.emit('load messages', messages);
 
-  socket.on('chat message', (data) => {
+  socket.on('chat message', async (data) => {
     messages.push(data); // Agregar al array
-    // Guardar al archivo
-    fs.writeFileSync(messagesFile, JSON.stringify(messages, null, 2));
-    io.emit('chat message', data); // Enviar a todos los conectados
+    try {
+      // Guardar al archivo de forma asíncrona para no bloquear el servidor
+      await fs.promises.writeFile(messagesFile, JSON.stringify(messages, null, 2));
+      io.emit('chat message', data); // Enviar a todos los conectados
+    } catch (err) {
+      console.error('Error al guardar el mensaje:', err);
+    }
   });
 
   socket.on('disconnect', () => {

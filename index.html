@@ -76,10 +76,11 @@
 <body>
     <div class="header">
         <h1>Chat Global</h1>
+        <div id="status" style="font-size: 12px; color: #ffd700;">Conectando...</div>
         <input type="text" id="usernameInput" placeholder="Tu nombre..." style="padding: 5px; border-radius: 5px; border: none; margin-top: 5px;">
     </div>
     <div class="chat-container" id="chatContainer">
-        <!-- Mensajes se agregarán aquí -->
+        <div id="no-messages" style="text-align: center; color: #777; margin-top: 20px;">Esperando mensajes...</div>
     </div>
     <div class="input-container">
         <input type="text" id="messageInput" placeholder="Escribe un mensaje...">
@@ -87,29 +88,35 @@
     </div>
 
     <script>
-        const socket = io();
-        const STORAGE_KEY = 'chatMessages';
-
-        function getSavedMessages() {
-            try {
-                const data = localStorage.getItem(STORAGE_KEY);
-                return data ? JSON.parse(data) : [];
-            } catch (err) {
-                console.error('Error al leer mensajes guardados:', err);
-                return [];
-            }
+        // 1. Verificación de seguridad: ¿Se abrió como archivo local?
+        if (window.location.protocol === 'file:') {
+            alert('¡Error! Has abierto el HTML como un archivo local. El chat solo funciona si entras por la URL de Railway o http://localhost:3000');
         }
 
-        function saveMessages(messages) {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-            } catch (err) {
-                console.error('Error al guardar mensajes:', err);
-            }
+        // 2. Intentar inicializar Socket.io
+        const socket = typeof io !== 'undefined' ? io() : null;
+        const statusDiv = document.getElementById('status');
+        const chatContainer = document.getElementById('chatContainer');
+
+        if (!socket) {
+            statusDiv.textContent = 'Error: No se pudo conectar con el servidor (Socket.io no cargado)';
+            statusDiv.style.color = '#ff5252';
+        } else {
+            socket.on('connect', () => {
+                statusDiv.textContent = 'Conectado';
+                statusDiv.style.color = '#25d366';
+            });
+
+            socket.on('disconnect', () => {
+                statusDiv.textContent = 'Desconectado';
+                statusDiv.style.color = '#ff5252';
+            });
         }
 
         function renderMessage(data) {
-            const chatContainer = document.getElementById('chatContainer');
+            const noMessages = document.getElementById('no-messages');
+            if (noMessages) noMessages.remove();
+
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message received';
             const usernameDiv = document.createElement('div');
@@ -122,6 +129,7 @@
         }
 
         function sendMessage() {
+            if (!socket) return alert('No hay conexión con el servidor');
             const input = document.getElementById('messageInput');
             const usernameInput = document.getElementById('usernameInput');
             const message = input.value.trim();
@@ -129,30 +137,24 @@
             if (message) {
                 const newMessage = { username, message };
                 socket.emit('chat message', newMessage);
-                renderMessage(newMessage);
-                const messages = getSavedMessages();
-                messages.push(newMessage);
-                saveMessages(messages);
                 input.value = '';
             }
         }
 
-        socket.on('chat message', (data) => {
-            renderMessage(data);
-            const messages = getSavedMessages();
-            messages.push(data);
-            saveMessages(messages);
-        });
+        if (socket) {
+            socket.on('chat message', (data) => {
+                renderMessage(data);
+            });
 
-        socket.on('load messages', (loadedMessages) => {
-            const chatContainer = document.getElementById('chatContainer');
-            chatContainer.innerHTML = '';
-            loadedMessages.forEach(renderMessage);
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            getSavedMessages().forEach(renderMessage);
-        });
+            socket.on('load messages', (loadedMessages) => {
+                chatContainer.innerHTML = '';
+                if (loadedMessages.length === 0) {
+                    chatContainer.innerHTML = '<div id="no-messages" style="text-align: center; color: #777; margin-top: 20px;">No hay mensajes aún. ¡Sé el primero!</div>';
+                } else {
+                    loadedMessages.forEach(renderMessage);
+                }
+            });
+        }
 
         // Permitir enviar con Enter
         document.getElementById('messageInput').addEventListener('keypress', function(e) {

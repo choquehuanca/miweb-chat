@@ -10,7 +10,7 @@ Esta es una aplicación de chat en tiempo real donde todos los usuarios conectad
 2. Abre una terminal en la carpeta del proyecto (`c:\Users\lenos\OneDrive\Escritorio\miweb`).
 3. Ejecuta `npm install` para instalar las dependencias.
 4. Ejecuta `npm start` para iniciar el servidor.
-5. Abre `http://localhost:3000/chat.html` en varios navegadores para probar el chat global.
+5. Abre `http://localhost:3000/` en varios navegadores para probar el chat global.
 
 ## Funcionalidades
 - Ingresa tu nombre en el campo superior.
@@ -18,6 +18,6 @@ Esta es una aplicación de chat en tiempo real donde todos los usuarios conectad
 - Todos los mensajes se comparten en tiempo real con todos los usuarios conectados.
 
 ## Archivos
-- `chat.html`: La interfaz del chat.
+- `index.html`: La interfaz del chat.
 - `server.js`: El servidor backend con Socket.io.
 - `package.json`: Configuración del proyecto.
